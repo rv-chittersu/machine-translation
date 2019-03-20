@@ -1,40 +1,34 @@
-from torch import optim
+from encoder import Encoder
+from decoder import Decoder
 
 
 class Trainer:
 
-    def __init__(self, encoder, decoder, attention_layer,  max_input_length, max_output_length):
-        self.encoder = encoder
-        self.decoder = decoder
-        self.attention_layer = attention_layer
-        self.encoder_optimizer = optim.Adam(encoder.parameters(), lr=0.01)
-        self.decoder_optimizer = optim.Adam(decoder.paramters(), lr=0.01)
-        self.attention_layer_optimizer = optim.Adam(attention_layer.parameters(), lr=0.01) if attention_layer.has_parameters() else None
-        self.max_input_length = max_input_length
-        self.max_output_length = max_output_length
+    def __init__(self, encoder, decoder):
+        self.encoder: Encoder = encoder
+        self.decoder: Decoder = decoder
 
-    def feed_mini_batch(self, input_tensor, input_lengths, input_mask,  output_tensor,
-                        output_mask, train=True, result_file=None):
+    def feed_mini_batch(self, input_tensor, input_lengths, input_mask,  output_tensor, output_lengths,
+                        output_mask, train=True, result_file=None, attention_file=None):
         if train:
-            self.encoder_optimizer.zero_grad()
-            self.decoder_optimizer.zero_grad()
-            if self.attention_layer is not None:
-                self.attention_layer_optimizer.zero_grad()
+            self.encoder.reset_grad()
+            self.decoder.reset_grad()
 
         hidden_states, hidden_state, cell_state = self.encoder(input_tensor, input_lengths)
-        loss, result = self.decoder(output_tensor, output_mask, hidden_states, input_mask, hidden_state, cell_state)
-        result = self.decoder(hidden_states, input_mask, hidden_state, cell_state, 12)
+        loss, result, attn = self.decoder(output_tensor, hidden_states, input_mask, hidden_state, cell_state)
 
         if train:
             loss.backward()
-            self.encoder_optimizer.step()
-            self.decoder_optimizer.step()
-            if self.attention_layer is not None:
-                self.attention_layer_optimizer.step()
+            self.encoder.update_weights()
+            self.decoder.update_weights()
 
-        if result_file is not None:
-            # write the translated sentence to file
-            pass
+        # if result_file is not None:
+        #     # write the translated sentence to file
+        #     pass
+        #
+        # if attention_file is not None:
+        #     # write attention to file
+        #     pass
 
     def train(self, source_language_file, destination_language_file):
         # from file read a mini batch

@@ -13,7 +13,6 @@ class Attention(nn.Module):
         super().__init__()
 
     def forward(self, current_state, encoder_hidden_states, encoder_mask, decoder_hidden_states, decoder_mask):
-
         previous, mask = self.merge(encoder_hidden_states, decoder_hidden_states, encoder_mask, decoder_mask)
         previous_keys, previous_values = self.split_key_value(previous)
         key, value = self.split_key_value(current_state)
@@ -23,9 +22,6 @@ class Attention(nn.Module):
         return torch.cat((value, context_vector), 1), attention_distribution
 
     def attention(self, current, previous):
-        pass
-
-    def has_parameters(self):
         pass
 
     def apply_mask_and_compute_softmax(self, weights, mask):
@@ -78,9 +74,6 @@ class AdditiveAttention(Attention):
         result = self.hidden_layer2(result)  # (sequence*batch_len, 1)
         return result.view(sequence_length, batch_size)
 
-    def has_parameters(self):
-        return True
-
 
 class MultiplicativeAttention(Attention):
 
@@ -104,9 +97,6 @@ class MultiplicativeAttention(Attention):
         result = torch.sum(result, 1)
         return result.view((sequence_length, batch_size))
 
-    def has_parameters(self):
-        return True
-
 
 class ScaledDotProductAttention(Attention):
 
@@ -125,6 +115,3 @@ class ScaledDotProductAttention(Attention):
         result = torch.sum(result, 1)
         result = torch.div(result, math.sqrt(hidden_units))
         return result.view((sequence_length, batch_size))
-
-    def has_parameters(self):
-        return False
