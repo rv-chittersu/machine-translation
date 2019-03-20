@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as f
 import math
 
 
@@ -25,10 +25,13 @@ class Attention(nn.Module):
     def attention(self, current, previous):
         pass
 
+    def has_parameters(self):
+        pass
+
     def apply_mask_and_compute_softmax(self, weights, mask):
         result = torch.log(mask)
         weights += result
-        softmax = F.softmax(weights, dim=0)
+        softmax = f.softmax(weights, dim=0)
         return softmax
 
     def get_context_vector(self, distribution, previous):
@@ -75,6 +78,9 @@ class AdditiveAttention(Attention):
         result = self.hidden_layer2(result)  # (sequence*batch_len, 1)
         return result.view(sequence_length, batch_size)
 
+    def has_parameters(self):
+        return True
+
 
 class MultiplicativeAttention(Attention):
 
@@ -98,6 +104,9 @@ class MultiplicativeAttention(Attention):
         result = torch.sum(result, 1)
         return result.view((sequence_length, batch_size))
 
+    def has_parameters(self):
+        return True
+
 
 class ScaledDotProductAttention(Attention):
 
@@ -116,3 +125,6 @@ class ScaledDotProductAttention(Attention):
         result = torch.sum(result, 1)
         result = torch.div(result, math.sqrt(hidden_units))
         return result.view((sequence_length, batch_size))
+
+    def has_parameters(self):
+        return False

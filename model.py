@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence
 from torch.nn.utils.rnn import pack_padded_sequence
-import torch.nn.functional as F
+import torch.nn.functional as f
 
 
 class Encoder(nn.Module):
@@ -42,10 +42,11 @@ class Decoder(nn.Module):
     hidden_units = 0
     embedding_dimensions = 0
 
-    def __init__(self, vocabulary_size, embedding_size, hidden_units, attention_layer):
+    def __init__(self, vocabulary_size, embedding_size, hidden_units, attention_layer, max_length):
         super().__init__()
         self.hidden_units = hidden_units
         self.embedding_dimensions = embedding_size
+        self.max_length = max_length
 
         self.embedding_layer = nn.Embedding(vocabulary_size, embedding_size, padding_idx=0)
         self.lstm = nn.LSTM(input_size=embedding_size, hidden_size=hidden_units)
@@ -57,36 +58,35 @@ class Decoder(nn.Module):
 
         self.attentionLayer = attention_layer
 
-    def forward(self, output_tensor, output_mask, encoder_hidden_states, input_mask, hidden_state, cell_state):
+    def forward(self, output_tensor, encoder_hidden_states, input_mask, hidden_state, cell_state):
 
-        loss = None
+        loss = torch.zeros(1)
 
-        sequence_length, batch_size = output_tensor.shape
-
-        embeddings = self.embedding_layer(output_tensor)
+        _, batch_size = input_mask.shape
 
         decoder_hidden_states = None
         current_output_mask = None
-        result = None
+        result = torch.ones((1, batch_size), dtype=torch.long)
 
-        for position in range(sequence_length - 1):
-            _, (hidden_state, cell_state) = self.lstm(embeddings[position].view(1, batch_size, -1), (hidden_state, cell_state))
+        for position in range(self.max_length - 1):
+
+            embedding_layer_input = result[position] if output_tensor is None else output_tensor[position]
+            embeddings = self.embedding_layer(embedding_layer_input)
+
+            _, (hidden_state, cell_state) = self.lstm(embeddings.view(1, batch_size, -1),
+                                                      (hidden_state, cell_state))
 
             if self.attentionLayer is not None:
-                output_with_attention, _ = self.attentionLayer(torch.squeeze(hidden_state, 0), encoder_hidden_states, input_mask, decoder_hidden_states, current_output_mask)
+                output_with_attention, _ = self.attentionLayer(torch.squeeze(hidden_state, 0), encoder_hidden_states,
+                                                               input_mask, decoder_hidden_states, current_output_mask)
             else:
                 output_with_attention = torch.squeeze(hidden_state, 0)
 
             dist = self.output_layer(output_with_attention)
 
-            print(dist)
-
-            labels = output_tensor[position + 1].clone()
-            ce_loss = F.cross_entropy(dist, labels, ignore_index=0, reduction='mean')
-
-            if loss is None:
-                loss = ce_loss
-            else:
+            if output_tensor is not None:
+                labels = output_tensor[position + 1].clone()
+                ce_loss = f.cross_entropy(dist, labels, ignore_index=0, reduction='mean')
                 loss += ce_loss
 
             _, top_indices = dist.data.topk(1)
@@ -101,9 +101,6 @@ class Decoder(nn.Module):
             else:
                 decoder_hidden_states = torch.cat((decoder_hidden_states, hidden_state), dim=0)
 
-            if current_output_mask is None:
-                current_output_mask = output_mask[position].view(1, batch_size)
-            else:
-                current_output_mask = torch.cat((current_output_mask, output_mask[position].view(1, batch_size)))
+            current_output_mask = torch.ones((position + 1, batch_size), dtype=torch.float)
 
         return loss, result
