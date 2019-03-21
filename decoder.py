@@ -17,6 +17,7 @@ class Decoder(nn.Module):
         self.max_length = max_length
         self.define_layers(vocabulary_size, embedding_size, hidden_units, attention_params)
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        self.attention_params = attention_params
 
     def define_layers(self, vocabulary_size, embedding_size, hidden_units, layers, attention_params=None):
         self.embedding_layer = nn.Embedding(vocabulary_size, embedding_size, padding_idx=0)
@@ -37,6 +38,8 @@ class Decoder(nn.Module):
             return MultiplicativeAttention(hidden_units, params.intra_attn, params.key_value_split)
         elif params.name == 'scaled_dot_product':
             return ScaledDotProductAttention(hidden_units, params.intra_attn, params.key_value_split)
+        elif params.name == 'self_attention':
+            return SelfAttention(hidden_units, params.intra_attn, params.key_value_split)
         return
 
     def reset_grad(self):
@@ -44,6 +47,19 @@ class Decoder(nn.Module):
 
     def update_weights(self):
         self.optimizer.step()
+
+    def get_output_with_attention(self, value, context, encoder_self_attention):
+        batch_size, _ = value.shape
+        if context is None:
+            # probably first stage in self decoder attn
+            # expected attn layer output size
+            context_dim = self.attention_layer.output_size
+            context = torch.zeros((batch_size, context_dim))
+            pass
+        result = torch.cat((value, context), dim=1)
+        if encoder_self_attention is not None:
+            result = torch.cat((result, encoder_self_attention), dim=1)
+        return result
 
     def forward(self, output_tensor, encoder_hidden_states, input_mask, hidden_state, cell_state):
         # define loss
@@ -62,6 +78,13 @@ class Decoder(nn.Module):
 
         attn = []
 
+        encoder_self_attention = None
+        if self.attention_params.name == 'self_attention':
+            _, encoder_self_attention, _ = self.attention_layer(None, encoder_self_attention, input_mask,
+                                                                None, None)
+            encoder_hidden_states = None
+            input_mask = None
+
         for position in range(self.max_length - 1):
 
             # if output is absent get input from previous step result and generate embeddings
@@ -76,8 +99,9 @@ class Decoder(nn.Module):
 
             # pass final_hidden_state through attention layer exist
             if self.attention_layer is not None:
-                output_with_attention, attn_dist = self.attention_layer(lstm_output, encoder_hidden_states, input_mask,
-                                                                        decoder_hidden_states, current_output_mask)
+                value, context, attn_dist = self.attention_layer(lstm_output, encoder_hidden_states, input_mask,
+                                                                 decoder_hidden_states, current_output_mask)
+                output_with_attention = self.get_output_with_attention(value, context, encoder_self_attention)
             else:
                 output_with_attention = lstm_output
                 attn_dist = None

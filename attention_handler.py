@@ -6,10 +6,12 @@ import math
 
 class Attention(nn.Module):
 
-    def __init__(self, hidden_units, self_attention=False, key_value_split=None):
+    def __init__(self, hidden_units, decoder_attention=False, key_value_split=None):
         self.hidden_units = hidden_units
         self.key_value_split = key_value_split
-        self.self_attention = self_attention
+        self.decoder_attention = decoder_attention
+        self.intra_attention = False
+        self.output = hidden_units if key_value_split is None else key_value_split[1]
         super().__init__()
 
     def forward(self, current_state, encoder_hidden_states, encoder_mask, decoder_hidden_states, decoder_mask):
@@ -19,7 +21,7 @@ class Attention(nn.Module):
         attention_weights = self.attention(key, previous_keys)
         attention_distribution = self.apply_mask_and_compute_softmax(attention_weights, mask)
         context_vector = self.get_context_vector(attention_distribution, previous_values)
-        return torch.cat((value, context_vector), 1), attention_distribution
+        return value, context_vector, attention_distribution
 
     def attention(self, current, previous):
         pass
@@ -38,12 +40,21 @@ class Attention(nn.Module):
         return result
 
     def merge(self, encoder_hidden_states, decoder_hidden_states, input_mask, output_mask):
-        if self.self_attention:
+        if encoder_hidden_states is None and decoder_hidden_states is None:
+            return None, None
+        if self.intra_attention:
+            if encoder_hidden_states is None:
+                return decoder_hidden_states, output_mask
+            else:
+                return encoder_hidden_states, input_mask
+        if self.decoder_attention:
             if decoder_hidden_states is not None:
                 return torch.cat((encoder_hidden_states, decoder_hidden_states)), torch.cat((input_mask, output_mask))
         return encoder_hidden_states, input_mask
 
     def split_key_value(self, tensor):
+        if tensor is None:
+            return None, None
         dimensions = len(tensor.shape)
         if self.key_value_split is not None:
             return torch.split(tensor, self.key_value_split, dim=dimensions - 1)
@@ -52,14 +63,10 @@ class Attention(nn.Module):
 
 class AdditiveAttention(Attention):
 
-    def __init__(self, hidden_units, self_attention=False, key_value_split=None):
-        super().__init__(hidden_units, self_attention, key_value_split)
+    def __init__(self, hidden_units, decoder_attention=False, key_value_split=None):
+        super().__init__(hidden_units, decoder_attention, key_value_split)
 
-        input_size = 2*hidden_units
-        self.output_size = 2*hidden_units
-        if key_value_split is not None:
-            input_size = 2 * key_value_split[0]
-            self.output_size = 2*key_value_split[1]
+        input_size = 2*hidden_units if key_value_split is not None else 2*key_value_split[0]
 
         self.hidden_layer1 = nn.Linear(input_size, int(input_size/2))
         self.hidden_layer2 = nn.Linear(int(input_size/2), 1)
@@ -77,14 +84,10 @@ class AdditiveAttention(Attention):
 
 class MultiplicativeAttention(Attention):
 
-    def __init__(self, hidden_units, self_attention=False, key_value_split=None):
-        super().__init__(hidden_units, self_attention, key_value_split)
+    def __init__(self, hidden_units, decoder_attention=False, key_value_split=None):
+        super().__init__(hidden_units, decoder_attention, key_value_split)
 
-        input_size = hidden_units
-        self.output_size = 2 * hidden_units
-        if key_value_split is not None:
-            input_size = key_value_split[0]
-            self.output_size = 2 * key_value_split[1]
+        input_size = hidden_units if key_value_split is not None else key_value_split[0]
 
         self.hidden_layer1 = nn.Linear(input_size, input_size)
 
@@ -100,12 +103,8 @@ class MultiplicativeAttention(Attention):
 
 class ScaledDotProductAttention(Attention):
 
-    def __init__(self, hidden_units, self_attention=False, key_value_split=None):
-        super().__init__(hidden_units, self_attention, key_value_split)
-
-        self.output_size = 2 * hidden_units
-        if key_value_split is not None:
-            self.output_size = 2 * key_value_split[1]
+    def __init__(self, hidden_units, decoder_attention=False, key_value_split=None):
+        super().__init__(hidden_units, decoder_attention, key_value_split)
 
     def attention(self, current_state, previous_states):
         sequence_length, batch_size, hidden_units = previous_states.shape
@@ -115,3 +114,22 @@ class ScaledDotProductAttention(Attention):
         result = torch.sum(result, 1)
         result = torch.div(result, math.sqrt(hidden_units))
         return result.view((sequence_length, batch_size))
+
+
+class SelfAttention(Attention):
+
+    def __init__(self, hidden_units, decoder_attention=False, key_value_split=None):
+        super().__init__(hidden_units, decoder_attention, key_value_split)
+
+        input_size = hidden_units if key_value_split is not None else key_value_split[0]
+
+        self.hidden_layer1 = nn.Linear(input_size, int(input_size / 2))
+        self.hidden_layer2 = nn.Linear(int(input_size / 2), 1)
+
+    def attention(self, current_state, previous_states):
+        sequence_length, batch_size, hidden_units = previous_states.shape
+        previous_states = previous_states.view(-1, hidden_units)  # (sequence_len*batch_size, hidden_units)
+        result = self.hidden_layer1(previous_states)  # (sequence_len*batch_size, hidden_units)
+        result = torch.tanh(result)
+        result = self.hidden_layer2(result)  # (sequence*batch_len, 1)
+        return result.view(sequence_length, batch_size)
