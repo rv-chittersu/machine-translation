@@ -32,11 +32,11 @@ class Decoder(nn.Module):
         if params is None:
             return
         if params.name == 'additive':
-            return AdditiveAttention(hidden_units, params.self_attn, params.key_value_split)
+            return AdditiveAttention(hidden_units, params.intra_attn, params.key_value_split)
         elif params.name == 'multiplicative':
-            return MultiplicativeAttention(hidden_units, params.self_attn, params.key_value_split)
+            return MultiplicativeAttention(hidden_units, params.intra_attn, params.key_value_split)
         elif params.name == 'scaled_dot_product':
-            return ScaledDotProductAttention(hidden_units, params.self_attn, params.key_value_split)
+            return ScaledDotProductAttention(hidden_units, params.intra_attn, params.key_value_split)
         return
 
     def reset_grad(self):
@@ -76,8 +76,8 @@ class Decoder(nn.Module):
 
             # pass final_hidden_state through attention layer exist
             if self.attention_layer is not None:
-                output_with_attention, attn_dist = self.attention_layer(lstm_output, encoder_hidden_states,
-                                                                input_mask, decoder_hidden_states, current_output_mask)
+                output_with_attention, attn_dist = self.attention_layer(lstm_output, encoder_hidden_states, input_mask,
+                                                                        decoder_hidden_states, current_output_mask)
             else:
                 output_with_attention = lstm_output
                 attn_dist = None
@@ -87,7 +87,7 @@ class Decoder(nn.Module):
 
             # calculate loss if output is available
             if output_tensor is not None:
-                ce_loss = f.cross_entropy(dist, output_tensor[position + 1], ignore_index=0, reduction='mean')
+                ce_loss = f.cross_entropy(dist, output_tensor[position + 1], ignore_index=1, reduction='mean')
                 loss += ce_loss
 
             # get top predictions
