@@ -79,7 +79,7 @@ def save_vocab(lang, file):
     f = open(file, 'w')
     freq = dict(lang.vocab.freqs)
     for key in freq.keys():
-        f.write(key + "," + str(freq[key]))
+        f.write(key + "," + str(freq[key]) + '\n')
     f.close()
 
 
@@ -145,7 +145,7 @@ if __name__ == '__main__':
     save_vocab(lang2, config.destination_vocab)
 
     print(str(datetime.datetime.now()) + ": saving training data")
-    write_to_file(train, config.training_data)
+    write_to_file(train_data, config.training_data)
 
     dev = read(config.processed_dev_data, lang1, lang2)
     print(str(datetime.datetime.now()) + ": saving dev data")
