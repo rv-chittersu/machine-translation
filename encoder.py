@@ -16,11 +16,12 @@ class Encoder(nn.Module):
     hidden_state_reducer = None
     cell_state_reducer = True
 
-    def __init__(self, vocabulary_size, embedding_size, hidden_units, lstm_layers, learning_rate):
+    def __init__(self, vocabulary_size, config):
         super().__init__()
-        self.define_modules(vocabulary_size, embedding_size, hidden_units,  lstm_layers)
-        self.define_parameters(hidden_units, lstm_layers)
-        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        # embedding_size, hidden_units, lstm_layers, learning_rate
+        self.define_modules(vocabulary_size, config.embedding_size, config.hidden_units,  config.lstm_layers)
+        self.define_parameters(config.hidden_units, config.lstm_layers)
+        self.optimizer = optim.Adam(self.parameters(), lr=config.learning_rate)
 
     def define_modules(self, vocabulary_size, embedding_size, hidden_units,  lstm_layers):
         self.embedding_layer = nn.Embedding(vocabulary_size, embedding_size, padding_idx=1)

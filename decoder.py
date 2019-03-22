@@ -12,12 +12,13 @@ class Decoder(nn.Module):
     output_layer = None
     optimizer = None
 
-    def __init__(self, vocabulary_size, embedding_size, hidden_units, attention_params, max_length, learning_rate):
+    def __init__(self, vocabulary_size, config):
         super().__init__()
-        self.max_length = max_length
-        self.define_layers(vocabulary_size, embedding_size, hidden_units, attention_params)
-        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
-        self.attention_params = attention_params
+        # embedding_size, hidden_units, attention_params, max_length, learning_rate
+        self.max_length = config.max_length
+        self.define_layers(vocabulary_size, config.embedding_size, config.hidden_units, config.attention_params)
+        self.optimizer = optim.Adam(self.parameters(), lr=config.learning_rate)
+        self.attention_params = config.attention_params
 
     def define_layers(self, vocabulary_size, embedding_size, hidden_units, layers, attention_params=None):
         self.embedding_layer = nn.Embedding(vocabulary_size, embedding_size, padding_idx=0)
