@@ -14,7 +14,7 @@ class Encoder(nn.Module):
 
     output_reducer = None
     hidden_state_reducer = None
-    cell_state_reducer = True
+    cell_state_reducer = None
 
     def __init__(self, vocabulary_size, config):
         super().__init__()

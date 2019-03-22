@@ -4,8 +4,6 @@ from attention_handler import *
 
 class Decoder(nn.Module):
 
-    max_length = 0
-
     lstm = None
     embedding_layer = None
     attention_layer = None
@@ -16,7 +14,7 @@ class Decoder(nn.Module):
         super().__init__()
         # embedding_size, hidden_units, attention_params, max_length, learning_rate
         self.max_length = config.max_length
-        self.define_layers(vocabulary_size, config.embedding_size, config.hidden_units, config.attention_params)
+        self.define_layers(vocabulary_size, config.embedding_size, config.hidden_units, config.layers, config.attention_params)
         self.optimizer = optim.Adam(self.parameters(), lr=config.learning_rate)
         self.attention_params = config.attention_params
 
@@ -31,16 +29,19 @@ class Decoder(nn.Module):
         self.output_layer = nn.Linear(output_layer_size, vocabulary_size)
 
     def define_attention_layer(self, params, hidden_units):
+        name = params['name']
+        decoder_attn = params['decoder_attn']
+        key_value_split = params['key_value_split']
         if params is None:
             return
-        if params.name == 'additive':
-            return AdditiveAttention(hidden_units, params.intra_attn, params.key_value_split)
-        elif params.name == 'multiplicative':
-            return MultiplicativeAttention(hidden_units, params.intra_attn, params.key_value_split)
-        elif params.name == 'scaled_dot_product':
-            return ScaledDotProductAttention(hidden_units, params.intra_attn, params.key_value_split)
-        elif params.name == 'self_attention':
-            return SelfAttention(hidden_units, params.intra_attn, params.key_value_split)
+        if name == 'additive':
+            return AdditiveAttention(hidden_units, decoder_attn, key_value_split)
+        elif name == 'multiplicative':
+            return MultiplicativeAttention(hidden_units, decoder_attn, key_value_split)
+        elif name == 'scaled_dot_product':
+            return ScaledDotProductAttention(hidden_units, decoder_attn, key_value_split)
+        elif name == 'self_attention':
+            return SelfAttention(hidden_units, decoder_attn, key_value_split)
         return
 
     def reset_grad(self):
@@ -62,11 +63,13 @@ class Decoder(nn.Module):
             result = torch.cat((result, encoder_self_attention), dim=1)
         return result
 
-    def forward(self, output_tensor, encoder_hidden_states, input_mask, hidden_state, cell_state):
+    def forward(self, output_tensor, encoder_hidden_states, input_mask, hidden_state, cell_state, max_length):
         # define loss
         loss = torch.zeros(1)
 
         layers, batch_size, hidden_size = hidden_state.shape
+
+        seq_len = 0 if output_tensor is None else output_tensor.shape[0]
 
         # decoder hidden_states tensor
         decoder_hidden_states = None
@@ -86,7 +89,7 @@ class Decoder(nn.Module):
             encoder_hidden_states = None
             input_mask = None
 
-        for position in range(self.max_length - 1):
+        for position in range(max(max_length - 1, seq_len)):
 
             # if output is absent get input from previous step result and generate embeddings
             embedding_layer_input = result[position] if output_tensor is None else output_tensor[position]

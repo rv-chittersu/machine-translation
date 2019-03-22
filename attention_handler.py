@@ -73,7 +73,7 @@ class AdditiveAttention(Attention):
     def __init__(self, hidden_units, decoder_attention=False, key_value_split=None):
         super().__init__(hidden_units, decoder_attention, key_value_split)
 
-        input_size = 2*hidden_units if key_value_split is not None else 2*key_value_split[0]
+        input_size = 2*hidden_units if key_value_split is None else 2*key_value_split[0]
 
         self.hidden_layer1 = nn.Linear(input_size, int(input_size/2))
         self.hidden_layer2 = nn.Linear(int(input_size/2), 1)
@@ -94,7 +94,7 @@ class MultiplicativeAttention(Attention):
     def __init__(self, hidden_units, decoder_attention=False, key_value_split=None):
         super().__init__(hidden_units, decoder_attention, key_value_split)
 
-        input_size = hidden_units if key_value_split is not None else key_value_split[0]
+        input_size = hidden_units if key_value_split is None else key_value_split[0]
 
         self.hidden_layer1 = nn.Linear(input_size, input_size)
 
@@ -128,7 +128,7 @@ class SelfAttention(Attention):
     def __init__(self, hidden_units, decoder_attention=False, key_value_split=None):
         super().__init__(hidden_units, decoder_attention, key_value_split)
 
-        input_size = hidden_units if key_value_split is not None else key_value_split[0]
+        input_size = hidden_units if key_value_split is None else key_value_split[0]
 
         self.hidden_layer1 = nn.Linear(input_size, int(input_size / 2))
         self.hidden_layer2 = nn.Linear(int(input_size / 2), 1)

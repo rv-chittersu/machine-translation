@@ -78,6 +78,8 @@ def initialize_lang_fields(file, language1, language2):
 def save_vocab(lang, file):
     f = open(file, 'w')
     freq = dict(lang.vocab.freqs)
+
+    print(str(datetime.datetime.now()) + ": vocab size " + str(file) + " - " + str(len(freq.keys()) + 4))
     for key in freq.keys():
         f.write(key + "," + str(freq[key]) + '\n')
     f.close()
@@ -85,19 +87,28 @@ def save_vocab(lang, file):
 
 def write_to_file(data, file):
 
+    count = 0
     f = open(file, 'w')
     data_size = len(data.examples)
-    iterator = BucketIterator(dataset=data, batch_size=1, repeat=False)
+    iterator = BucketIterator(dataset=data, batch_size=200, repeat=False)
 
     for i in range(data_size):
         b = next(iter(iterator))
-        f.write(" ".join(b.lang1.shape(-1).tolist()) + "\t" + " ".join(b.lang2.shape(-1).tolist()))
+        results = process_encoded_sentences(b.lang1, b.lang2)
+        f.write("\n".join(results))
+        count += 200
+
+        if count > data_size:
+            break
+
+        if count % 10000 == 0:
+            print(str(datetime.datetime.now()) + ": " + file + ":" + str(count) + "/" + str(data_size))
     f.close()
 
 
 def read(file, lang1, lang2):
     data_fields = [('lang1', lang1), ('lang2', lang2)]
-    res =  TabularDataset(path=file, format='tsv', fields=data_fields, skip_header=True)
+    res = TabularDataset(path=file, format='tsv', fields=data_fields, skip_header=True)
     print(str(datetime.datetime.now()) + ": loaded " + file)
     return res
 
@@ -149,7 +160,6 @@ if __name__ == '__main__':
 
     dev = read(config.processed_dev_data, lang1, lang2)
     print(str(datetime.datetime.now()) + ": saving dev data")
-
     write_to_file(dev, config.dev_data)
 
     test = read(config.processed_test_data, lang1, lang2)
