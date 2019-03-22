@@ -12,6 +12,11 @@ class Attention(nn.Module):
         self.decoder_attention = decoder_attention
         self.intra_attention = False
         self.output = hidden_units if key_value_split is None else key_value_split[1]
+
+        self.transform_layer = None
+        if key_value_split is not None and hidden_units != sum(key_value_split):
+            self.transform_layer = nn.Linear(hidden_units, sum(key_value_split))
+
         super().__init__()
 
     def forward(self, current_state, encoder_hidden_states, encoder_mask, decoder_hidden_states, decoder_mask):
@@ -57,6 +62,8 @@ class Attention(nn.Module):
             return None, None
         dimensions = len(tensor.shape)
         if self.key_value_split is not None:
+            if self.transform_layer is not None:
+                tensor = self.transform_layer(tensor)
             return torch.split(tensor, self.key_value_split, dim=dimensions - 1)
         return tensor, tensor
 
