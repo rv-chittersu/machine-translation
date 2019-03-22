@@ -1,9 +1,10 @@
 import datetime
 import pandas as pd
-from torchtext.data import Field, TabularDataset
+from torchtext.data import Field, TabularDataset, BucketIterator
 from sklearn.model_selection import train_test_split
-import spacy
+import nltk
 from config_handler import Config
+from utils import *
 
 
 def remove_punctuation(string):
@@ -15,13 +16,21 @@ def remove_punctuation(string):
 
 
 def english_tokenizer(sentence):
-    en = spacy.load('en')
-    return [tok.text for tok in en.tokenizer(sentence)]
+    result = []
+    for c in contractions.keys():
+        if c in sentence:
+            res = sentence.split(c)
+            sentence = contractions[c].split("/")[0].strip().join(res)
+    for sent in nltk.sent_tokenize(sentence, language='english'):
+        result = result + (nltk.word_tokenize(sent, language='english'))
+    return result
 
 
 def german_tokenizer(sentence):
-    de = spacy.load('de')
-    return [tok.text for tok in de.tokenizer(sentence)]
+    result = []
+    for sent in nltk.sent_tokenize(sentence, language='german'):
+        result = result + (nltk.word_tokenize(sent, language='german'))
+    return result
 
 
 def hindi_tokenizer(sentence):
@@ -58,16 +67,39 @@ def initialize_lang_fields(file, language1, language2):
     lang1 = get_field(language1)
     lang2 = get_field(language2)
 
-    data_fields = [('lang1', lang1), ('lang2', lang2)]
-    train_data = TabularDataset(path=file, format='tsv', fields=data_fields, skip_header=True)
+    train_data = read(file, lang1, lang2)
 
-    print(datetime.datetime.now())
     lang1.build_vocab(train_data, min_freq=100)
-    print(datetime.datetime.now())
     lang2.build_vocab(train_data, min_freq=100)
-    print(datetime.datetime.now())
 
     return lang1, lang2, train_data
+
+
+def save_vocab(lang, file):
+    f = open(file, 'w')
+    freq = dict(lang.vocab.freqs)
+    for key in freq.keys():
+        f.write(key + "," + str(freq[key]))
+    f.close()
+
+
+def write_to_file(data, file):
+
+    f = open(file, 'w')
+    data_size = len(data.examples)
+    iterator = BucketIterator(dataset=data, batch_size=1, repeat=False)
+
+    for i in range(data_size):
+        b = next(iter(iterator))
+        f.write(" ".join(b.lang1.shape(-1).tolist()) + "\t" + " ".join(b.lang2.shape(-1).tolist()))
+    f.close()
+
+
+def read(file, lang1, lang2):
+    data_fields = [('lang1', lang1), ('lang2', lang2)]
+    res =  TabularDataset(path=file, format='tsv', fields=data_fields, skip_header=True)
+    print(str(datetime.datetime.now()) + ": loaded " + file)
+    return res
 
 
 if __name__ == '__main__':
@@ -99,9 +131,27 @@ if __name__ == '__main__':
     train, test = train_test_split(df, test_size=0.2)
     train, dev = train_test_split(train, test_size=0.2)
 
+    print(str(datetime.datetime.now()) + ": creating processed files")
     # write train test dev to file
-    train.to_csv(config.processed_training_data, index=False, sep='\t', header=False)
-    dev.to_csv(config.processed_dev_data, index=False, sep='\t', header=False)
-    test.to_csv(config.processed_test_data, index=False, sep='\t', header=False)
+    train.to_csv(config.processed_training_data, index=False, sep='\t')
+    dev.to_csv(config.processed_dev_data, index=False, sep='\t')
+    test.to_csv(config.processed_test_data, index=False, sep='\t')
 
-    # lang1, lang2, train_data = initialize_lang_fields(config.processed_training_data, config.source_lang, config.destination_lang)
+    print(str(datetime.datetime.now()) + ": creating vocab from training data")
+    lang1, lang2, train_data = initialize_lang_fields(config.processed_training_data, config.source_lang, config.destination_lang)
+
+    print(str(datetime.datetime.now()) + ": saving vocab")
+    save_vocab(lang1, config.source_vocab)
+    save_vocab(lang2, config.destination_vocab)
+
+    print(str(datetime.datetime.now()) + ": saving training data")
+    write_to_file(train, config.training_data)
+
+    dev = read(config.processed_dev_data, lang1, lang2)
+    print(str(datetime.datetime.now()) + ": saving dev data")
+
+    write_to_file(dev, config.dev_data)
+
+    test = read(config.processed_test_data, lang1, lang2)
+    print(str(datetime.datetime.now()) + ": saving test data")
+    write_to_file(test, config.test_data)
