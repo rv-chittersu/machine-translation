@@ -89,14 +89,17 @@ def save_vocab(lang, file):
 def limit_len(file1, file2):
     lines = open(file1).readlines()
     f = open(file2, 'w')
+    count = 0
     for line in lines:
         pair = line.split("\t")
         if len(pair) != 2:
             continue
-        if min(len(pair[1].split(" ")), len(pair[0].split(" "))) > 50:
+        if max(len(pair[1].split(" ")), len(pair[0].split(" "))) > 50:
+            count += 1
             continue
         f.write(line)
     f.close()
+    print("skipped " + str(count) + "lines")
 
 
 def write_to_file(data, file):

@@ -21,6 +21,14 @@ class Trainer:
         self.decoder: Decoder = decoder
         self.key = file_name
 
+    def clean_grads(self):
+        for p in self.encoder.parameters():
+            if p.grad is not None:
+                del p.grad  # free some memory
+        for p in self.decoder.parameters():
+            if p.grad is not None:
+                del p.grad  # free some memory
+
     def get_result_file_name(self, mode):
         return self.key + '.' + mode + '.res'
 
@@ -75,7 +83,19 @@ class Trainer:
 
         while True:
             batch = next(iter(batch_iterator))
-            loss, score = self.feed_mini_batch(batch.lang1.cuda(), batch.lang2.cuda(), mode)
+            try:
+                loss, score = self.feed_mini_batch(batch.lang1.cuda(), batch.lang2.cuda(), mode)
+            except RuntimeError as e:
+                if 'out of memory' in str(e):
+                    print('| WARNING: ran out of memory, giving up on batch size - '
+                          + str(batch.lang1.shape) + " and " + str(batch.lang2.shape) + " batch id:" + str(batches))
+                    self.clean_grads()
+                    torch.cuda.empty_cache()
+                    loss = 0
+                    score = 0
+                else:
+                    print("| Error don't know what happened. Batch id:" + str(batches) + str(batch.lang1.shape) + " and " + str(batch.lang2.shape))
+                    raise e
             total_loss += loss
             intermediate_loss += loss
             total_score += score
