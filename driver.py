@@ -28,29 +28,29 @@ if __name__ == '__main__':
     decoder = Decoder(destination_size, config)
 
     trainer = Trainer(encoder.cuda(), decoder.cuda(), config.result_folder + "/" + key)
-    print(torch.cuda.memory_allocated()/1000000)
     logs = []
 
     for epoch in range(config.epochs):
         # train model
-        loss, _, batches = trainer.run(config.training_data, config.batch_size, 'train')
+        loss, _, batches = trainer.run(config.training_data, config.batch_size, config.max_batches, 'train')
         log = str(dt.now()) + ": >>>Epoch-" + str(epoch) + " - Avg. Training Loss:" + str(loss/batches)
         print(log)
         logs.append(log)
 
         # eval model
-        loss, score, batches = trainer.run(config.dev_data, config.batch_size, 'dev')
+        loss, _, batches = trainer.run(config.dev_data, config.batch_size, config.max_batches, 'dev')
         log = str(dt.now()) + ": >>>Epoch-" + str(epoch) + " - Avg. Dev Loss:" + str(loss/batches)
         print(log)
         logs.append(log)
 
-    loss, score, batches = trainer.run(config.test_data, config.batch_size, 'test')
-    log = str(dt.now()) + ": Avg. Score:" + str(score / batches)
-    logs.append(log)
+        # test model
+        loss, score, batches = trainer.run(config.test_data, config.batch_size, config.max_batches, 'test')
+        log = str(dt.now()) + ": Avg. Score:" + str(score / batches)
+        print(log)
+        logs.append(log)
 
-    # save model to key.model file
-    torch.save(encoder, config.result_folder + "/" + key + '.encoder')
-    torch.save(decoder, config.result_folder + "/" + key + '.decoder')
+        torch.save(encoder, config.result_folder + "/" + key + '.' + str(epoch) + '.encoder')
+        torch.save(decoder, config.result_folder + "/" + key + '.' + str(epoch) + '.decoder')
 
     f = open(config.result_folder + "/" + key + '.result', 'w')
     f.write(pp.pformat(config.__dict__))

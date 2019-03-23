@@ -25,8 +25,6 @@ class Trainer:
         return self.key + '.' + mode + '.res'
 
     def feed_mini_batch(self, input_tensor,  output_tensor, mode):
-        print(input_tensor.shape)
-        print(output_tensor.shape)
         # operation such that all non zero is one and all one is zero
         input_mask = torch.FloatTensor(input_tensor.shape).copy_(input_tensor).apply_(lambda val: 0 if val == 1 else 1).cuda()
         input_lengths = torch.sum(input_mask, 0)
@@ -58,7 +56,7 @@ class Trainer:
         torch.cuda.empty_cache()
         return loss, score
 
-    def run(self, file, batch_size, mode):
+    def run(self, file, batch_size, max_batches, mode):
 
         data_fields = [('lang1', self.lang1), ('lang2', self.lang2)]
         data = TabularDataset(path=file, format='tsv', fields=data_fields, skip_header=True)
@@ -83,11 +81,12 @@ class Trainer:
             total_score += score
             batches += 1
 
-            if batches % 10 == 0:
+            if batches % 100 == 0:
                 print(str(dt.now()) + ": " + mode + "@" + str(batches) + " loss:" + str(intermediate_loss/batches))
                 intermediate_loss = 0
-                break
 
             if batches*batch_size >= data_count:
+                break
+            if batches == max_batches:
                 break
         return total_loss, total_score, batches

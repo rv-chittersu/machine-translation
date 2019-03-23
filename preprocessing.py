@@ -47,6 +47,8 @@ def pre_process(tokenized_sentence):
             word = '<num>'
         if len(word) != 0:
             result.append(word)
+    if len(result) > 60:
+        return []
     return result
 
 
@@ -81,6 +83,19 @@ def save_vocab(lang, file):
 
     for key in mapping.keys():
         f.write(key + "," + str(mapping[key]) + '\n')
+    f.close()
+
+
+def limit_len(file1, file2):
+    lines = open(file1).readlines()
+    f = open(file2, 'w')
+    for line in lines:
+        pair = line.split("\t")
+        if len(pair) != 2:
+            continue
+        if min(len(pair[1].split(" ")), len(pair[0].split(" "))) > 50:
+            continue
+        f.write(line)
     f.close()
 
 

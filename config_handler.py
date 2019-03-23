@@ -52,3 +52,4 @@ class Config:
 
         self.batch_size = config.getint('TRAINING', 'BatchSize')
         self.epochs = config.getint('TRAINING', 'Epochs')
+        self.max_batches = config.getint('TRAINING', 'MaxBatches')

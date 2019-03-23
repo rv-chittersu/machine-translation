@@ -87,18 +87,11 @@ class Decoder(nn.Module):
             input_mask = None
 
         for position in range(max(max_length - 1, seq_len - 1)):
-            #print("before free in decoder " + str(torch.cuda.memory_allocated() / 1000000))
             torch.cuda.empty_cache()
 
         # if output is absent get input from previous step result and generate embeddings
             embedding_layer_input = result[position] if output_tensor is None else output_tensor[position]
-            try:
-                embeddings = self.embedding_layer(embedding_layer_input)  # (batch_size, embedding_dim)
-            except Exception:
-                print("At embedding layer")
-                print(embedding_layer_input)
-                pass
-
+            embeddings = self.embedding_layer(embedding_layer_input)  # (batch_size, embedding_dim)
             lstm_output, (hidden_state, cell_state) = self.lstm(embeddings.view(1, batch_size, -1),
                                                                        (hidden_state, cell_state))
 
@@ -119,13 +112,8 @@ class Decoder(nn.Module):
 
             # calculate loss if output is available
             if output_tensor is not None:
-                try:
-                    ce_loss = f.cross_entropy(dist, output_tensor[position + 1], ignore_index=1, reduction='mean')
-                    loss += ce_loss
-                except Exception:
-                    print("At output layer")
-                    print(output_tensor[position + 1])
-                    pass
+                ce_loss = f.cross_entropy(dist, output_tensor[position + 1], ignore_index=1, reduction='mean')
+                loss += ce_loss
 
             # get top predictions
             _, top_indices = dist.data.topk(1)
