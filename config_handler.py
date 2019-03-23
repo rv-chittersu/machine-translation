@@ -26,16 +26,19 @@ class Config:
 
         self.source_vocab = config.get('DATA', 'SourceVocab')
         self.destination_vocab = config.get('DATA', 'DestinationVocab')
+        self.min_freq = config.getint('DATA', 'MinimumFrequency')
 
-        self.encoder_embedding_size = config.get('MODEL', 'SourceEmbeddingDim')
-        self.decoder_embedding_size = config.get('MODEL', 'DestinationEmbeddingDim')
-        self.layers = config.get('MODEL', 'LSTMLayers')
-        self.learning_rate = config.get('MODEL', 'LearningRate')
-        self.hidden_units = config.get('MODEL', 'LSTMHiddenUnits')
+        self.result_folder = config.get('DATA', 'ResultDir')
+
+        self.encoder_embedding_size = config.getint('MODEL', 'SourceEmbeddingDim')
+        self.decoder_embedding_size = config.getint('MODEL', 'DestinationEmbeddingDim')
+        self.layers = config.getint('MODEL', 'LSTMLayers')
+        self.learning_rate = config.getfloat('MODEL', 'LearningRate')
+        self.hidden_units = config.getint('MODEL', 'LSTMHiddenUnits')
 
         params = {
             "name": config.get('ATTENTION', 'Name'),
-            "decoder_attn": config.get('ATTENTION', 'DecoderAttn')
+            "decoder_attn": config.getboolean('ATTENTION', 'DecoderAttn')
         }
 
         kv_split = config.get('ATTENTION', 'KVSplit').split(",")
@@ -47,5 +50,5 @@ class Config:
 
         self.attention_params = params
 
-        self.batch_size = config.get('TRAINING', 'BatchSize')
-        self.epochs = config.get('TRAINING', 'Epochs')
+        self.batch_size = config.getint('TRAINING', 'BatchSize')
+        self.epochs = config.getint('TRAINING', 'Epochs')

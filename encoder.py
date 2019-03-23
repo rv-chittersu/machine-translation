@@ -6,37 +6,29 @@ from attention_handler import *
 
 
 class Encoder(nn.Module):
-    embedding_layer = None
-    lstm = None
-    initial_hidden_state = None
-    initial_cell_state = None
-    optimizer = None
-
-    output_reducer = None
-    hidden_state_reducer = None
-    cell_state_reducer = None
 
     def __init__(self, vocabulary_size, config):
         super().__init__()
+        self.apple = "apple"
         # embedding_size, hidden_units, lstm_layers, learning_rate
-        self.define_modules(vocabulary_size, config.embedding_size, config.hidden_units,  config.lstm_layers)
-        self.define_parameters(config.hidden_units, config.lstm_layers)
+        self.define_modules(vocabulary_size, config.encoder_embedding_size, config.hidden_units,  config.layers)
+        self.define_parameters(config.hidden_units, config.layers)
         self.optimizer = optim.Adam(self.parameters(), lr=config.learning_rate)
 
     def define_modules(self, vocabulary_size, embedding_size, hidden_units,  lstm_layers):
         self.embedding_layer = nn.Embedding(vocabulary_size, embedding_size, padding_idx=1)
         self.lstm = nn.LSTM(input_size=embedding_size, hidden_size=hidden_units,
                             num_layers=lstm_layers, bidirectional=True)
-        self.output_reducer = nn.Linear(2*hidden_units, hidden_units, bias=False)
-        self.hidden_state_reducer = nn.Linear(2*hidden_units, hidden_units, bias=False)
+        self.output_reducer = nn.Linear(2 * hidden_units, hidden_units, bias=False)
+        self.hidden_state_reducer = nn.Linear(2 * hidden_units, hidden_units, bias=False)
         self.cell_state_reducer = nn.Linear(2*hidden_units, hidden_units, bias=False)
 
     def define_parameters(self, hidden_units, lstm_layers):
-        initial_hidden_state = torch.randn((lstm_layers, 1, hidden_units), dtype=torch.float)  # (layers, 1, h_units)
-        self.initial_hidden_state = torch.nn.Parameter(initial_hidden_state, requires_grad=True)
+        hidden_state = torch.randn((lstm_layers * 2, 1, hidden_units), dtype=torch.float)  # (layers, 1, h_units)
+        self.initial_hidden_state = torch.nn.Parameter(hidden_state, requires_grad=True)
 
-        initial_cell_state = torch.randn((lstm_layers, 1, hidden_units), dtype=torch.float)  # (layers, 1, h_units)
-        self.initial_cell_state = torch.nn.Parameter(initial_cell_state, requires_grad=True)
+        cell_state = torch.randn((lstm_layers * 2, 1, hidden_units), dtype=torch.float)  # (layers, 1, h_units)
+        self.initial_cell_state = torch.nn.Parameter(cell_state, requires_grad=True)
 
     def reset_grad(self):
         self.optimizer.zero_grad()
@@ -52,7 +44,7 @@ class Encoder(nn.Module):
 
         # scale initial states to batch size
         hidden_state = self.initial_hidden_state.repeat(1, batch_size, 1)  # (layers, batch_size, h_units)
-        cell_state = self.initial_cell_state.repeat(batch_size, 1)  # (layers, batch_size, h_units)
+        cell_state = self.initial_cell_state.repeat(1, batch_size, 1)  # (layers, batch_size, h_units)
 
         # get embeddings
         embeddings = self.embedding_layer(input_tensor)  # (sequence_length, batch_size, input_dim)
@@ -64,10 +56,17 @@ class Encoder(nn.Module):
 
         # unpack hidden_states
         hidden_states = pad_packed_sequence(packed_hidden_states, padding_value=0.0, total_length=sequence_length)
-
+        hidden_states = hidden_states[0]
         # hidden_states : seq_len, batch, 2*hidden_size
-        # hidden_state : layers , batch_size, 2*hidden_size
+        # hidden_state : 2*layers , batch_size, hidden_size
         # cell_state : layers, batch_size, 2*hidden_size
+
+        _, _, hidden_dimension = hidden_state.shape
+        hidden_state = hidden_state.view(-1, 2, batch_size, hidden_dimension)
+        cell_state = cell_state.view(-1, 2, batch_size, hidden_dimension)
+
+        hidden_state = torch.cat(torch.split(hidden_state, (1, 1), 1), 3).squeeze(1)
+        cell_state = torch.cat(torch.split(cell_state, (1, 1), 1), 3).squeeze(1)
 
         output = self.output_reducer(hidden_states)
         decoder_hidden_state = self.hidden_state_reducer(hidden_state)

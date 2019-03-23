@@ -62,26 +62,25 @@ def get_field(language):
                      lower=True, init_token="<sos>", eos_token="<eos>")
 
 
-def initialize_lang_fields(file, language1, language2):
+def initialize_lang_fields(file, language1, language2, freq):
 
     lang1 = get_field(language1)
     lang2 = get_field(language2)
 
     train_data = read(file, lang1, lang2)
 
-    lang1.build_vocab(train_data, min_freq=100)
-    lang2.build_vocab(train_data, min_freq=100)
+    lang1.build_vocab(train_data, min_freq=freq)
+    lang2.build_vocab(train_data, min_freq=freq)
 
     return lang1, lang2, train_data
 
 
 def save_vocab(lang, file):
     f = open(file, 'w')
-    freq = dict(lang.vocab.freqs)
+    mapping = lang.vocab.stoi
 
-    print(str(datetime.datetime.now()) + ": vocab size " + str(file) + " - " + str(len(freq.keys()) + 4))
-    for key in freq.keys():
-        f.write(key + "," + str(freq[key]) + '\n')
+    for key in mapping.keys():
+        f.write(key + "," + str(mapping[key]) + '\n')
     f.close()
 
 
@@ -136,7 +135,7 @@ if __name__ == '__main__':
 
     df = df.drop(df.index[list(s)])
 
-    df = df.query('lang1_len < 80 & lang2_len < 80 & lang1_len > 5 & lang2_len > 5')
+    df = df.query('lang1_len < 60 & lang2_len < 60 & lang1_len > 5 & lang2_len > 5')
     df = df.query('lang2_len < lang1_len * 1.5 & lang2_len * 1.5 > lang1_len')
 
     train, test = train_test_split(df, test_size=0.2)
@@ -149,7 +148,7 @@ if __name__ == '__main__':
     test.to_csv(config.processed_test_data, index=False, sep='\t')
 
     print(str(datetime.datetime.now()) + ": creating vocab from training data")
-    lang1, lang2, train_data = initialize_lang_fields(config.processed_training_data, config.source_lang, config.destination_lang)
+    lang1, lang2, train_data = initialize_lang_fields(config.processed_training_data, config.source_lang, config.destination_lang, config.min_freq)
 
     print(str(datetime.datetime.now()) + ": saving vocab")
     save_vocab(lang1, config.source_vocab)

@@ -1,5 +1,3 @@
-from collections import Counter
-from torchtext.vocab import Vocab
 import torch
 
 contractions = {
@@ -132,8 +130,15 @@ def process_encoded_sentences(t1, t2, sep=False):
 
     for j in range(len(s1)):
 
-        str1 = " ".join([str(k) for k in s1[j][1: s1[j].index(3)]])
-        str2 = " ".join([str(k) for k in s2[j][1: s2[j].index(3)]])
+        len1 = len(s1[j])
+        len2 = len(s2[j])
+
+        if 3 in s1[j]:
+            len1 = s1[j].index(3) + 1
+        if 3 in s2[j]:
+            len2 = s2[j].index(3) + 1
+        str1 = " ".join([str(k) for k in s1[j][0: len1]])
+        str2 = " ".join([str(k) for k in s2[j][0: len2]])
 
         if sep:
             result1.append(str1)
@@ -141,7 +146,7 @@ def process_encoded_sentences(t1, t2, sep=False):
         else:
             result1.append(str1 + '\t' + str2)
 
-    return result1, result2 if sep else result1
+    return [result1, result2] if sep else result1
 
 
 def write_to_file(file, list1, list2=None):
@@ -155,17 +160,12 @@ def write_to_file(file, list1, list2=None):
     f.close()
 
 
-def load_vocabulary(file, min_frequency=100):
-    res = {}
+def get_vocab_size(file):
+    size = 0
     with open(file, 'r') as f:
         lines = f.read().split("\n")
         for line in lines:
             if len(line.split(",")) != 2:
                 continue
-            key, value = line.split(",")
-            value = int(value)
-            if value < min_frequency:
-                continue
-            res[key] = value
-    size = 4 + len(res.keys())
-    return Vocab(Counter(res), specials=['<unk>', '<pad>', '<sos>', '<eos>']), size
+            size += 1
+    return size

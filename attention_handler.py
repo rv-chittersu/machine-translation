@@ -11,7 +11,7 @@ class Attention(nn.Module):
         self.key_value_split = key_value_split
         self.decoder_attention = decoder_attention
         self.intra_attention = False
-        self.output = hidden_units if key_value_split is None else key_value_split[1]
+        self.output_size = hidden_units if key_value_split is None else key_value_split[1]
 
         self.transform_layer = None
         if key_value_split is not None and hidden_units != sum(key_value_split):
