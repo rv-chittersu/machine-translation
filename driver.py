@@ -68,8 +68,8 @@ if __name__ == '__main__':
         f.write("\n")
         f.flush()
 
-        torch.save(encoder, config.result_folder + "/" + key + '.' + str(epoch) + '.encoder')
-        torch.save(decoder, config.result_folder + "/" + key + '.' + str(epoch) + '.decoder')
+        torch.save(encoder, config.checkpoint_folder + "/" + key + '.' + str(epoch) + '.encoder')
+        torch.save(decoder, config.checkpoint_folder + "/" + key + '.' + str(epoch) + '.decoder')
         print("Key - " + key)
     f.close()
 

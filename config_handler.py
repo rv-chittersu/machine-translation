@@ -30,6 +30,8 @@ class Config:
         self.min_freq = config.getint('DATA', 'MinimumFrequency')
 
         self.result_folder = config.get('DATA', 'ResultDir')
+        self.checkpoint_folder = config.get('DATA', 'CheckpointDir')
+
 
         self.encoder_embedding_size = config.getint('MODEL', 'SourceEmbeddingDim')
         self.decoder_embedding_size = config.getint('MODEL', 'DestinationEmbeddingDim')
