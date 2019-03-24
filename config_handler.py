@@ -12,6 +12,7 @@ class Config:
 
         self.source_data = config.get('DATA', 'SourceData')
         self.destination_data = config.get('DATA', 'DestinationData')
+        self.max_sent_length = config.getint('DATA', 'MaxSentenceLength')
 
         self.processed_training_data = config.get('DATA', 'ProcessedTrainingData')
         self.processed_dev_data = config.get('DATA', 'ProcessedDevData')
@@ -50,6 +51,13 @@ class Config:
 
         self.attention_params = params
 
-        self.batch_size = config.getint('TRAINING', 'BatchSize')
         self.epochs = config.getint('TRAINING', 'Epochs')
-        self.max_batches = config.getint('TRAINING', 'MaxBatches')
+
+        self.training_batch_size = config.getint('TRAINING', 'TrainingBatchSize')
+        self.max_training_batches = config.getint('TRAINING', 'MaxTrainingBatches')
+
+        self.dev_batch_size = config.getint('TRAINING', 'DevBatchSize')
+        self.max_dev_batches = config.getint('TRAINING', 'MaxDevBatches')
+
+        self.test_batch_size = config.getint('TRAINING', 'TestBatchSize')
+        self.max_test_batches = config.getint('TRAINING', 'MaxTestBatches')

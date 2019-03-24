@@ -49,7 +49,6 @@ class Trainer:
             loss, result, _ = self.decoder(None, hidden_states, input_mask, hidden_state, cell_state, 60)
 
         if mode == 'train':
-            loss.backward()
             self.encoder.update_weights()
             self.decoder.update_weights()
 
@@ -59,6 +58,7 @@ class Trainer:
         if mode == 'test':
             result1, result2 = process_encoded_sentences(result, output_tensor, sep=True)
             score = get_moses_multi_bleu(result1, result2)
+            score = 0 if score is None else score
             write_to_file(self.get_result_file_name(mode), result1, result2)
 
         torch.cuda.empty_cache()
@@ -80,6 +80,8 @@ class Trainer:
         batches = 0
 
         intermediate_loss = 0
+        intermediate_score = 0
+        intermediate_batches = 0
 
         while True:
             batch = next(iter(batch_iterator))
@@ -98,12 +100,19 @@ class Trainer:
                     raise e
             total_loss += loss
             intermediate_loss += loss
+            intermediate_score += score
+            intermediate_batches += 1
             total_score += score
             batches += 1
 
-            if batches % 100 == 0:
-                print(str(dt.now()) + ": " + mode + "@" + str(batches) + " loss:" + str(intermediate_loss/batches))
+            if batches % 1 == 0:
+                if mode != 'test':
+                    print(str(dt.now()) + ": " + mode + "@" + str(batches) + " loss:" + str(intermediate_loss/intermediate_batches))
+                else:
+                    print(str(dt.now()) + ": " + mode + "@" + str(batches) + " score:" + str(intermediate_score/intermediate_batches))
                 intermediate_loss = 0
+                intermediate_batches = 0
+                intermediate_score = 0
 
             if batches*batch_size >= data_count:
                 break

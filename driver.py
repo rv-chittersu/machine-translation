@@ -8,55 +8,70 @@ import string
 from utils import *
 import torch
 import pprint
+import sys
 
 
 if __name__ == '__main__':
     config = Config('./config.ini')
-
-    key = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))  # generate random string
-    print("Key - " + key)
-
-    pp = pprint.PrettyPrinter(depth=6)
-    pp.pprint(config.__dict__)
 
     source_size = get_vocab_size(config.source_vocab)
     print("source vocab size - " + str(source_size))
     destination_size = get_vocab_size(config.destination_vocab)
     print("dest vocab size - " + str(destination_size))
 
-    encoder = Encoder(source_size, config)
-    decoder = Decoder(destination_size, config)
+    pp = pprint.PrettyPrinter(depth=6)
+    pp.pprint(config.__dict__)
+
+    key = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))  # generate random string
+    init_epoch = 0
+    if len(sys.argv) == 3:
+        key = sys.argv[1]
+        init_epoch = int(sys.argv[2])
+        print("Loading run" + key + "at epoch - " + sys.argv[2])
+        encoder = torch.load(config.result_folder + "/" + key + "." + str(init_epoch) + ".encoder")
+        decoder = torch.load(config.result_folder + "/" + key + "." + str(init_epoch) + ".decoder")
+        f = open(config.result_folder + "/" + key + ".result", "w+")
+    else:
+        encoder = Encoder(source_size, config)
+        decoder = Decoder(destination_size, config)
+        f = open(config.result_folder + "/" + key + '.result', 'w')
+
+    print("Key - " + key)
 
     trainer = Trainer(encoder.cuda(), decoder.cuda(), config.result_folder + "/" + key)
-    logs = []
+
+    f.write(pp.pformat(config.__dict__))
+    f.write("\n\n")
 
     for epoch in range(config.epochs):
         # train model
-        loss, _, batches = trainer.run(config.training_data, config.batch_size, config.max_batches, 'train')
+        loss, _, batches = trainer.run(config.processed_training_data, config.training_batch_size, config.max_training_batches, 'train')
         log = str(dt.now()) + ": >>>Epoch-" + str(epoch) + " - Avg. Training Loss:" + str(loss/batches)
         print(log)
-        logs.append(log)
+        f.write(log)
+        f.write("\n")
+        f.flush()
 
         # eval model
-        loss, _, batches = trainer.run(config.dev_data, config.batch_size, config.max_batches, 'dev')
+        loss, _, batches = trainer.run(config.processed_dev_data, config.dev_batch_size, config.max_dev_batches, 'dev')
         log = str(dt.now()) + ": >>>Epoch-" + str(epoch) + " - Avg. Dev Loss:" + str(loss/batches)
         print(log)
-        logs.append(log)
+        f.write(log)
+        f.write("\n")
+        f.flush()
 
         # test model
-        loss, score, batches = trainer.run(config.test_data, config.batch_size, config.max_batches, 'test')
-        log = str(dt.now()) + ": Avg. Score:" + str(score / batches)
+        loss, score, batches = trainer.run(config.processed_test_data, config.test_batch_size, config.max_test_batches, 'test')
+        log = str(dt.now()) + ": >>>Epoch-" + str(epoch) + " - Avg. Score:" + str(score / batches)
         print(log)
-        logs.append(log)
+        f.write(log)
+        f.write("\n")
+        f.flush()
 
         torch.save(encoder, config.result_folder + "/" + key + '.' + str(epoch) + '.encoder')
         torch.save(decoder, config.result_folder + "/" + key + '.' + str(epoch) + '.decoder')
-
-    f = open(config.result_folder + "/" + key + '.result', 'w')
-    f.write(pp.pformat(config.__dict__))
-    f.write("\n\n")
-    f.write("\n".join(logs))
-    pp.pprint(config.__dict__)
+        print("Key - " + key)
+    f.close()
 
 
 

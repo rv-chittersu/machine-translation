@@ -86,20 +86,22 @@ def save_vocab(lang, file):
     f.close()
 
 
-def limit_len(file1, file2):
-    lines = open(file1).readlines()
-    f = open(file2, 'w')
+def limit_len(file1):
+    with open(file1) as f:
+        lines = f.readlines()
+
+    f = open(file1, 'w')
     count = 0
     for line in lines:
         pair = line.split("\t")
         if len(pair) != 2:
             continue
-        if max(len(pair[1].split(" ")), len(pair[0].split(" "))) > 50:
+        if max(len(pair[1].split(" ")), len(pair[0].split(" "))) > config.max_sent_length:
             count += 1
             continue
         f.write(line)
     f.close()
-    print("skipped " + str(count) + "lines")
+    print("skipped " + str(count) + " lines")
 
 
 def write_to_file(data, file):
@@ -153,7 +155,7 @@ if __name__ == '__main__':
 
     df = df.drop(df.index[list(s)])
 
-    df = df.query('lang1_len < 60 & lang2_len < 60 & lang1_len > 5 & lang2_len > 5')
+    df = df.query('lang1_len < ' + str(config.max_sent_length) + ' & lang2_len < ' + str(config.max_sent_length) +  ' & lang1_len > 5 & lang2_len > 5')
     df = df.query('lang2_len < lang1_len * 1.5 & lang2_len * 1.5 > lang1_len')
 
     train, test = train_test_split(df, test_size=0.2)
@@ -161,24 +163,28 @@ if __name__ == '__main__':
 
     print(str(datetime.datetime.now()) + ": creating processed files")
     # write train test dev to file
-    train.to_csv(config.processed_training_data, index=False, sep='\t')
-    dev.to_csv(config.processed_dev_data, index=False, sep='\t')
-    test.to_csv(config.processed_test_data, index=False, sep='\t')
+    train.to_csv(config.training_data, index=False, sep='\t')
+    dev.to_csv(config.dev_data, index=False, sep='\t')
+    test.to_csv(config.test_data, index=False, sep='\t')
 
     print(str(datetime.datetime.now()) + ": creating vocab from training data")
-    lang1, lang2, train_data = initialize_lang_fields(config.processed_training_data, config.source_lang, config.destination_lang, config.min_freq)
+    lang1, lang2, train_data = initialize_lang_fields(config.training_data, config.source_lang, config.destination_lang, config.min_freq)
 
     print(str(datetime.datetime.now()) + ": saving vocab")
     save_vocab(lang1, config.source_vocab)
     save_vocab(lang2, config.destination_vocab)
 
     print(str(datetime.datetime.now()) + ": saving training data")
-    write_to_file(train_data, config.training_data)
+    write_to_file(train_data, config.processed_training_data)
+    limit_len(config.processed_training_data)
 
-    dev = read(config.processed_dev_data, lang1, lang2)
+    dev = read(config.dev_data, lang1, lang2)
     print(str(datetime.datetime.now()) + ": saving dev data")
-    write_to_file(dev, config.dev_data)
+    write_to_file(dev, config.processed_dev_data)
+    limit_len(config.processed_dev_data)
 
-    test = read(config.processed_test_data, lang1, lang2)
+    test = read(config.test_data, lang1, lang2)
     print(str(datetime.datetime.now()) + ": saving test data")
-    write_to_file(test, config.test_data)
+    write_to_file(test, config.processed_test_data)
+    limit_len(config.processed_test_data)
+
