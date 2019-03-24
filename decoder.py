@@ -15,30 +15,35 @@ class Decoder(nn.Module):
     def define_layers(self, vocabulary_size, embedding_size, hidden_units, layers, attention_params=None):
         self.embedding_layer = nn.Embedding(vocabulary_size, embedding_size, padding_idx=0)
         self.lstm = nn.LSTM(input_size=embedding_size, hidden_size=hidden_units, num_layers=layers)
-        self.attention_layer = self.define_attention_layer(attention_params, hidden_units)
+        self.define_attention_layer(attention_params, hidden_units)
         output_layer_size = hidden_units
         if self.attention_layer is not None:
-            output_layer_size = self.attention_layer.output_size
-            if attention_params["name"] == "self_attention":
-                output_layer_size = 3 * output_layer_size
-            else:
-                output_layer_size = 2 * output_layer_size
+            output_layer_size += self.attention_layer.output_size
+        if self.self_attention_layer is not None:
+            output_layer_size += 2*self.self_attention_layer.output_size
         self.output_layer = nn.Linear(output_layer_size, vocabulary_size)
 
     def define_attention_layer(self, params, hidden_units):
         name = params['name']
-        decoder_attn = params['decoder_attn']
+        self_attn = params['self_attn']
         key_value_split = params['key_value_split']
         if params is None:
+            self.attention_layer = None
+            self.self_attention_layer = None
             return
         if name == 'additive':
-            return AdditiveAttention(hidden_units, decoder_attn, key_value_split)
+            self.attention_layer = AdditiveAttention(hidden_units, key_value_split)
         elif name == 'multiplicative':
-            return MultiplicativeAttention(hidden_units, decoder_attn, key_value_split)
+            self.attention_layer = MultiplicativeAttention(hidden_units, key_value_split)
         elif name == 'scaled_dot_product':
-            return ScaledDotProductAttention(hidden_units, decoder_attn, key_value_split)
-        elif name == 'self_attention':
-            return SelfAttention(hidden_units, decoder_attn, key_value_split)
+            self.attention_layer = ScaledDotProductAttention(hidden_units, key_value_split)
+        else:
+            self.attention_layer = None
+
+        if self_attn:
+            self.self_attention_layer = SelfAttention(hidden_units, key_value_split)
+        else:
+            self.self_attention_layer = None
         return
 
     def reset_grad(self):
@@ -47,20 +52,21 @@ class Decoder(nn.Module):
     def update_weights(self):
         self.optimizer.step()
 
-    def get_output_with_attention(self, value, context, encoder_self_attention):
+    def get_output_with_attention(self, value, attn, decoder_self_attn, encoder_self_attn):
         batch_size, _ = value.shape
-        if context is None:
+        if encoder_self_attn is not None and decoder_self_attn is None:
             # probably first stage in self decoder attn
             # expected attn layer output size
-            context_dim = self.attention_layer.output_size
-            context = torch.zeros((batch_size, context_dim))
-            pass
-        result = torch.cat((value, context), dim=1)
-        if encoder_self_attention is not None:
-            result = torch.cat((result, encoder_self_attention), dim=1)
-        return result
+            decoder_self_attn = torch.zeros((batch_size, self.self_attention_layer.output_size), device=torch.device('cuda'))
+        outputs = [value]
+        if attn is not None:
+            outputs.append(attn)
+        if decoder_self_attn is not None:
+            outputs.append(decoder_self_attn)
+            outputs.append(encoder_self_attn)
+        return torch.cat(outputs, dim=1)
 
-    def forward(self, output_tensor, encoder_hidden_states, input_mask, hidden_state, cell_state, max_length):
+    def forward(self, output_tensor, encoder_hidden_states, input_mask, hidden_state, cell_state, encoder_attention, max_length):
         # define loss
         loss = 0
 
@@ -78,12 +84,7 @@ class Decoder(nn.Module):
         result = torch.empty((1, batch_size), dtype=torch.long, device=torch.device('cuda'))  # (1, batch_size)
         result.fill_(2)
 
-        attn = []
-
-        encoder_self_attention = None
         if self.attention_params['name'] == 'self_attention':
-            _, encoder_self_attention, _ = self.attention_layer(None, encoder_self_attention, input_mask,
-                                                                None, None)
             encoder_hidden_states = None
             input_mask = None
 
@@ -99,13 +100,13 @@ class Decoder(nn.Module):
             lstm_output = lstm_output.view(batch_size, -1)  # (batch_size, hidden_units)
 
             # pass final_hidden_state through attention layer exist
+            context = None
+            self_context = None
             if self.attention_layer is not None:
-                value, context, attn_dist = self.attention_layer(lstm_output, encoder_hidden_states, input_mask,
-                                                                 decoder_hidden_states, current_output_mask)
-                output_with_attention = self.get_output_with_attention(value, context, encoder_self_attention)
-            else:
-                output_with_attention = lstm_output
-                attn_dist = None
+                val, context, _ = self.attention_layer(lstm_output, encoder_hidden_states, input_mask)
+            if self.self_attention_layer is not None:
+                val, self_context, _ = self.self_attention_layer(None, decoder_hidden_states, current_output_mask)
+            output_with_attention = self.get_output_with_attention(lstm_output, context, self_context, encoder_attention)
 
             # get dist on vocabulary
             dist = self.output_layer(output_with_attention)
@@ -129,9 +130,6 @@ class Decoder(nn.Module):
             else:
                 decoder_hidden_states = torch.cat((decoder_hidden_states, lstm_output.view(1, batch_size, -1)), dim=0)
 
-            if attn_dist is not None:
-                attn.append(attn_dist)
-
             current_output_mask = torch.ones((position + 1, batch_size), dtype=torch.float, device=torch.device('cuda'))
 
-        return loss/seq_len, result, attn
+        return loss/seq_len, result

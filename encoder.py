@@ -7,21 +7,26 @@ from attention_handler import *
 
 class Encoder(nn.Module):
 
-    def __init__(self, vocabulary_size, config):
+    def __init__(self, vocabulary_size, config, ):
         super().__init__()
         self.apple = "apple"
         # embedding_size, hidden_units, lstm_layers, learning_rate
-        self.define_modules(vocabulary_size, config.encoder_embedding_size, config.hidden_units,  config.layers)
+        self.define_modules(vocabulary_size, config.encoder_embedding_size, config.hidden_units,
+                            config.layers, config.attention_params)
         self.define_parameters(config.hidden_units, config.layers)
         self.optimizer = optim.Adam(self.parameters(), lr=config.learning_rate, eps=1e-3, amsgrad=True)
+        self.attention_params = config.attention_params
 
-    def define_modules(self, vocabulary_size, embedding_size, hidden_units,  lstm_layers):
+    def define_modules(self, vocabulary_size, embedding_size, hidden_units,  lstm_layers, attention_params):
         self.embedding_layer = nn.Embedding(vocabulary_size, embedding_size, padding_idx=1)
         self.lstm = nn.LSTM(input_size=embedding_size, hidden_size=hidden_units,
                             num_layers=lstm_layers, bidirectional=True)
         self.output_reducer = nn.Linear(2 * hidden_units, hidden_units, bias=False)
         self.hidden_state_reducer = nn.Linear(2 * hidden_units, hidden_units, bias=False)
         self.cell_state_reducer = nn.Linear(2*hidden_units, hidden_units, bias=False)
+        self.self_attention = None
+        if attention_params["self_attn"]:
+            self.self_attention = SelfAttention(hidden_units, attention_params["key_value_split"])
 
     def define_parameters(self, hidden_units, lstm_layers):
         hidden_state = torch.randn((lstm_layers * 2, 1, hidden_units), dtype=torch.float)  # (layers, 1, h_units)
@@ -36,7 +41,7 @@ class Encoder(nn.Module):
     def update_weights(self):
         self.optimizer.step()
 
-    def forward(self, input_tensor, sequence_lengths):
+    def forward(self, input_tensor, sequence_lengths, input_mask):
         # input_tensor : (sequence_length, batch_size)
         # sequence_lengths : list with len = batch_size
 
@@ -72,4 +77,8 @@ class Encoder(nn.Module):
         decoder_hidden_state = self.hidden_state_reducer(hidden_state)
         decoder_cell_state = self.cell_state_reducer(cell_state)
 
-        return output, decoder_hidden_state, decoder_cell_state
+        encoder_attn = None
+        if self.self_attention is not None:
+            _, encoder_attn, _ = self.self_attention(None, output, input_mask)
+
+        return output, decoder_hidden_state, decoder_cell_state, encoder_attn

@@ -32,7 +32,6 @@ class Config:
         self.result_folder = config.get('DATA', 'ResultDir')
         self.checkpoint_folder = config.get('DATA', 'CheckpointDir')
 
-
         self.encoder_embedding_size = config.getint('MODEL', 'SourceEmbeddingDim')
         self.decoder_embedding_size = config.getint('MODEL', 'DestinationEmbeddingDim')
         self.layers = config.getint('MODEL', 'LSTMLayers')
@@ -41,7 +40,7 @@ class Config:
 
         params = {
             "name": config.get('ATTENTION', 'Name'),
-            "decoder_attn": config.getboolean('ATTENTION', 'DecoderAttn')
+            "self_attn": config.getboolean('ATTENTION', 'SelfAttention')
         }
 
         kv_split = config.get('ATTENTION', 'KVSplit').split(",")

@@ -19,9 +19,10 @@ class Attention(nn.Module):
 
         super().__init__()
 
-    def forward(self, current_state, encoder_hidden_states, encoder_mask, decoder_hidden_states, decoder_mask):
-        previous, mask = self.merge(encoder_hidden_states, decoder_hidden_states, encoder_mask, decoder_mask)
-        previous_keys, previous_values = self.split_key_value(previous)
+    def forward(self, current_state, previous_hidden_states, mask):
+        if previous_hidden_states is None:
+            return None, None, None
+        previous_keys, previous_values = self.split_key_value(previous_hidden_states)
         key, value = self.split_key_value(current_state)
         attention_weights = self.attention(key, previous_keys)
         attention_distribution = self.apply_mask_and_compute_softmax(attention_weights, mask)

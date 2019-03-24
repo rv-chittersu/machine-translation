@@ -1,11 +1,11 @@
 from encoder import Encoder
 from decoder import Decoder
 from torchtext.data import BucketIterator, TabularDataset, Field
-from torchnlp.metrics import get_moses_multi_bleu
+from nltk.translate.bleu_score import *
 from utils import *
 import numpy as np
 from datetime import datetime as dt
-
+c = SmoothingFunction().method1
 
 def post(batch, vocab):
     return np.array(list(batch), dtype=np.long)
@@ -38,12 +38,12 @@ class Trainer:
             self.encoder.reset_grad()
             self.decoder.reset_grad()
 
-        hidden_states, hidden_state, cell_state = self.encoder(input_tensor, input_lengths)
+        hidden_states, hidden_state, cell_state, attn = self.encoder(input_tensor, input_lengths, input_mask)
 
         if mode == 'train' or mode == 'dev':
-            loss, result, _ = self.decoder(output_tensor, hidden_states, input_mask, hidden_state, cell_state, 0)
+            loss, result = self.decoder(output_tensor, hidden_states, input_mask, hidden_state, cell_state, attn, 0)
         else:
-            loss, result, _ = self.decoder(None, hidden_states, input_mask, hidden_state, cell_state, 60)
+            loss, result = self.decoder(None, hidden_states, input_mask, hidden_state, cell_state, attn, 60)
 
         if mode == 'train':
             self.encoder.update_weights()
@@ -54,8 +54,9 @@ class Trainer:
         score = 0
         if mode == 'test':
             result1, result2 = process_encoded_sentences(result, output_tensor, sep=True)
-            score = get_moses_multi_bleu(result1, result2)
-            score = 0 if score is None else score
+            for index in range(len(result1)):
+                score += sentence_bleu([result2[index].split(" ")], result1[index].split(" "), smoothing_function=c)
+            score = (score*100)/len(result1)
 
         torch.cuda.empty_cache()
         return loss, score
