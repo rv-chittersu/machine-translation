@@ -29,9 +29,6 @@ class Trainer:
             if p.grad is not None:
                 del p.grad  # free some memory
 
-    def get_result_file_name(self, mode):
-        return self.key + '.' + mode + '.res'
-
     def feed_mini_batch(self, input_tensor,  output_tensor, mode):
         # operation such that all non zero is one and all one is zero
         input_mask = torch.FloatTensor(input_tensor.shape).copy_(input_tensor).apply_(lambda val: 0 if val == 1 else 1).cuda()
@@ -59,7 +56,6 @@ class Trainer:
             result1, result2 = process_encoded_sentences(result, output_tensor, sep=True)
             score = get_moses_multi_bleu(result1, result2)
             score = 0 if score is None else score
-            write_to_file(self.get_result_file_name(mode), result1, result2)
 
         torch.cuda.empty_cache()
         return loss, score
@@ -85,27 +81,15 @@ class Trainer:
 
         while True:
             batch = next(iter(batch_iterator))
-            try:
-                loss, score = self.feed_mini_batch(batch.lang1.cuda(), batch.lang2.cuda(), mode)
-            except RuntimeError as e:
-                if 'out of memory' in str(e):
-                    print('| WARNING: ran out of memory, giving up on batch size - '
-                          + str(batch.lang1.shape) + " and " + str(batch.lang2.shape) + " batch id:" + str(batches))
-                    self.clean_grads()
-                    torch.cuda.empty_cache()
-                    loss = 0
-                    score = 0
-                else:
-                    print("| Error don't know what happened. Batch id:" + str(batches) + str(batch.lang1.shape) + " and " + str(batch.lang2.shape))
-                    raise e
+            loss, score = self.feed_mini_batch(batch.lang1.cuda(), batch.lang2.cuda(), mode)
             total_loss += loss
+            total_score += score
             intermediate_loss += loss
             intermediate_score += score
             intermediate_batches += 1
-            total_score += score
             batches += 1
 
-            if batches % 1 == 0:
+            if batches % 100 == 0:
                 if mode != 'test':
                     print(str(dt.now()) + ": " + mode + "@" + str(batches) + " loss:" + str(intermediate_loss/intermediate_batches))
                 else:
