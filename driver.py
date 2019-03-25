@@ -28,8 +28,8 @@ if __name__ == '__main__':
         key = sys.argv[1]
         init_epoch = int(sys.argv[2])
         print("Loading run" + key + "at epoch - " + sys.argv[2])
-        encoder = torch.load(config.result_folder + "/" + key + "." + str(init_epoch) + ".encoder")
-        decoder = torch.load(config.result_folder + "/" + key + "." + str(init_epoch) + ".decoder")
+        encoder = torch.load(config.checkpoint_folder + "/" + key + "." + str(init_epoch) + ".encoder")
+        decoder = torch.load(config.checkpoint_folder + "/" + key + "." + str(init_epoch) + ".decoder")
         f = open(config.result_folder + "/" + key + ".result", "w+")
     else:
         encoder = Encoder(source_size, config)
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     f.write(pp.pformat(config.__dict__))
     f.write("\n\n")
 
-    for epoch in range(config.epochs):
+    for epoch in range(init_epoch + 1, config.epochs):
         # train model
         loss, _, batches = trainer.run(config.processed_training_data, config.training_batch_size, config.max_training_batches, 'train')
         log = str(dt.now()) + ": >>>Epoch-" + str(epoch) + " - Avg. Training Loss:" + str(loss/batches)
@@ -60,18 +60,19 @@ if __name__ == '__main__':
         f.write("\n")
         f.flush()
 
-        # test model
-        loss, score, batches = trainer.run(config.processed_test_data, config.test_batch_size, config.max_test_batches, 'test')
-        log = str(dt.now()) + ": >>>Epoch-" + str(epoch) + " - Avg. Score:" + str(score / batches)
-        print(log)
-        f.write(log)
-        f.write("\n")
-        f.flush()
-
         torch.save(encoder, config.checkpoint_folder + "/" + key + '.' + str(epoch) + '.encoder')
         torch.save(decoder, config.checkpoint_folder + "/" + key + '.' + str(epoch) + '.decoder')
         print("Key - " + key)
+
+    # test model
+    loss, score, batches = trainer.run(config.processed_test_data, config.test_batch_size, config.max_test_batches, 'test')
+    log = str(dt.now()) + ": >>> - BLEU Score:" + compute_bleu_score(config.result_folder + "/" + key)
+    print(log)
+    f.write(log)
+    f.write("\n")
+    f.flush()
     f.close()
+    print("Key - " + key)
 
 
 

@@ -1,11 +1,9 @@
 from encoder import Encoder
 from decoder import Decoder
 from torchtext.data import BucketIterator, TabularDataset, Field
-from nltk.translate.bleu_score import *
 from utils import *
 import numpy as np
 from datetime import datetime as dt
-c = SmoothingFunction().method1
 
 def post(batch, vocab):
     return np.array(list(batch), dtype=np.long)
@@ -19,7 +17,7 @@ class Trainer:
         self.lang2 = Field(use_vocab=False, postprocessing=post, pad_token='1')
         self.encoder: Encoder = encoder
         self.decoder: Decoder = decoder
-        self.key = file_name
+        self.file_name = file_name
 
     def clean_grads(self):
         for p in self.encoder.parameters():
@@ -53,13 +51,14 @@ class Trainer:
 
         score = 0
         if mode == 'test':
-            result1, result2 = process_encoded_sentences(result, output_tensor, sep=True)
-            for index in range(len(result1)):
-                score += sentence_bleu([result2[index].split(" ")], result1[index].split(" "), smoothing_function=c)
-            score = (score*100)/len(result1)
+            hyp, ref = process_encoded_sentences(result, output_tensor, sep=True)
+            with open(self.file_name + ".hyp", "w+") as f:
+                f.writelines(hyp)
+            with open(self.file_name + ".ref", "w+") as f:
+                f.writelines(hyp)
 
         torch.cuda.empty_cache()
-        return loss, score
+        return loss, score*100
 
     def run(self, file, batch_size, max_batches, mode):
 
