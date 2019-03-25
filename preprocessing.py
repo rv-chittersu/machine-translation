@@ -1,6 +1,6 @@
 import datetime
 import pandas as pd
-from torchtext.data import Field, TabularDataset, BucketIterator
+from torchtext.data import Field, TabularDataset, Iterator
 from sklearn.model_selection import train_test_split
 import nltk
 from config_handler import Config
@@ -109,16 +109,12 @@ def write_to_file(data, file):
     count = 0
     f = open(file, 'w')
     data_size = len(data.examples)
-    iterator = BucketIterator(dataset=data, batch_size=200, repeat=False)
+    iterator = Iterator(dataset=data, batch_size=200, repeat=False)
 
-    for i in range(data_size):
-        b = next(iter(iterator))
+    for b in iterator.__iter__():
         results = process_encoded_sentences(b.lang1, b.lang2)
         f.write("\n".join(results))
         count += 200
-
-        if count > data_size:
-            break
 
         if count % 10000 == 0:
             print(str(datetime.datetime.now()) + ": " + file + ":" + str(count) + "/" + str(data_size))

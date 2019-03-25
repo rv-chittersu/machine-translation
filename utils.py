@@ -172,6 +172,15 @@ def get_vocab_size(file):
             size += 1
     return size
 
+# def load_test_set(file, len):
+#     f = open(file)
+#     for line in f.read().split("\n"):
+#         if len(line) == 0:
+#             continue
+#         parts = line.split("\t")
+#         if len(parts) != 2:
+#             continue
+#     return lang1, lang2
 
 def compute_bleu_score(file):
     hypothesis = [x.split(" ") for x in open(file + ".hyp").read().split("\n") if len(x) != 0]

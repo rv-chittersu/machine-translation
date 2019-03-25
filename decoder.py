@@ -103,9 +103,9 @@ class Decoder(nn.Module):
             context = None
             self_context = None
             if self.attention_layer is not None:
-                val, context, _ = self.attention_layer(lstm_output, encoder_hidden_states, input_mask)
+                context, _ = self.attention_layer(lstm_output, encoder_hidden_states, input_mask)
             if self.self_attention_layer is not None:
-                val, self_context, _ = self.self_attention_layer(None, decoder_hidden_states, current_output_mask)
+                self_context, _ = self.self_attention_layer(None, decoder_hidden_states, current_output_mask)
             output_with_attention = self.get_output_with_attention(lstm_output, context, self_context, encoder_attention)
 
             # get dist on vocabulary

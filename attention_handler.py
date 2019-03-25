@@ -22,12 +22,12 @@ class Attention(nn.Module):
     def forward(self, current_state, previous_hidden_states, mask):
         if previous_hidden_states is None:
             return None, None, None
-        previous_keys, previous_values = self.split_key_value(previous_hidden_states)
-        key, value = self.split_key_value(current_state)
-        attention_weights = self.attention(key, previous_keys)
+        keys, values = self.split_key_value(previous_hidden_states)
+        query = current_state
+        attention_weights = self.attention(query, values)
         attention_distribution = self.apply_mask_and_compute_softmax(attention_weights, mask)
-        context_vector = self.get_context_vector(attention_distribution, previous_values)
-        return value, context_vector, attention_distribution
+        context_vector = self.get_context_vector(attention_distribution, values)
+        return context_vector, attention_distribution
 
     def attention(self, current, previous):
         pass
@@ -45,19 +45,6 @@ class Attention(nn.Module):
         result = torch.sum(result, 0)
         return result
 
-    def merge(self, encoder_hidden_states, decoder_hidden_states, input_mask, output_mask):
-        if encoder_hidden_states is None and decoder_hidden_states is None:
-            return None, None
-        if self.intra_attention:
-            if encoder_hidden_states is None:
-                return decoder_hidden_states, output_mask
-            else:
-                return encoder_hidden_states, input_mask
-        if self.decoder_attention:
-            if decoder_hidden_states is not None:
-                return torch.cat((encoder_hidden_states, decoder_hidden_states)), torch.cat((input_mask, output_mask))
-        return encoder_hidden_states, input_mask
-
     def split_key_value(self, tensor):
         if tensor is None:
             return None, None
@@ -74,7 +61,7 @@ class AdditiveAttention(Attention):
     def __init__(self, hidden_units, decoder_attention=False, key_value_split=None):
         super().__init__(hidden_units, decoder_attention, key_value_split)
 
-        input_size = 2*hidden_units if key_value_split is None else 2*key_value_split[0]
+        input_size = hidden_units + (hidden_units if key_value_split is None else key_value_split[0])
 
         self.hidden_layer1 = nn.Linear(input_size, int(input_size/2))
         self.hidden_layer2 = nn.Linear(int(input_size/2), 1)

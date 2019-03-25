@@ -1,6 +1,6 @@
 from encoder import Encoder
 from decoder import Decoder
-from torchtext.data import BucketIterator, TabularDataset, Field
+from torchtext.data import BucketIterator, TabularDataset, Field, Iterator
 from utils import *
 import numpy as np
 from datetime import datetime as dt
@@ -41,7 +41,7 @@ class Trainer:
         if mode == 'train' or mode == 'dev':
             loss, result = self.decoder(output_tensor, hidden_states, input_mask, hidden_state, cell_state, attn, 0)
         else:
-            loss, result = self.decoder(None, hidden_states, input_mask, hidden_state, cell_state, attn, 60)
+            loss, result = self.decoder(None, hidden_states, input_mask, hidden_state, cell_state, attn, 15)
 
         if mode == 'train':
             self.encoder.update_weights()
@@ -49,16 +49,15 @@ class Trainer:
 
         loss = float(loss)
 
-        score = 0
         if mode == 'test':
             hyp, ref = process_encoded_sentences(result, output_tensor, sep=True)
-            with open(self.file_name + ".hyp", "w+") as f:
-                f.writelines(hyp)
-            with open(self.file_name + ".ref", "w+") as f:
-                f.writelines(hyp)
+            self.hyp_file.write("\n".join(hyp) + "\n")
+            self.hyp_file.flush()
+            self.ref_file.write("\n".join(ref) + "\n")
+            self.ref_file.flush()
 
         torch.cuda.empty_cache()
-        return loss, score*100
+        return loss
 
     def run(self, file, batch_size, max_batches, mode):
 
@@ -72,34 +71,34 @@ class Trainer:
         print(str(dt.now()) + ": " + mode + " data size - " + str(data_count))
 
         total_loss = 0
-        total_score = 0
         batches = 0
 
         intermediate_loss = 0
-        intermediate_score = 0
         intermediate_batches = 0
 
-        while True:
-            batch = next(iter(batch_iterator))
-            loss, score = self.feed_mini_batch(batch.lang1.cuda(), batch.lang2.cuda(), mode)
+        if mode == 'test':
+            self.hyp_file = open(self.file_name + ".hyp", "w")
+            self.ref_file = open(self.file_name + ".ref", "w")
+
+        for batch in batch_iterator.__iter__():
+            loss = self.feed_mini_batch(batch.lang1.cuda(), batch.lang2.cuda(), mode)
             total_loss += loss
-            total_score += score
             intermediate_loss += loss
-            intermediate_score += score
             intermediate_batches += 1
             batches += 1
 
             if batches % 100 == 0:
                 if mode != 'test':
                     print(str(dt.now()) + ": " + mode + "@" + str(batches) + " loss:" + str(intermediate_loss/intermediate_batches))
-                else:
-                    print(str(dt.now()) + ": " + mode + "@" + str(batches) + " score:" + str(intermediate_score/intermediate_batches))
                 intermediate_loss = 0
                 intermediate_batches = 0
-                intermediate_score = 0
 
-            if batches*batch_size >= data_count:
+            if max_batches == batches:
                 break
-            if batches == max_batches:
-                break
-        return total_loss, total_score, batches
+
+        if mode == "test":
+            self.hyp_file.close()
+            self.ref_file.close()
+
+        return total_loss, batches
+
