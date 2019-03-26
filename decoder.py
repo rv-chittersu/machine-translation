@@ -1,5 +1,6 @@
 from torch import optim
 from attention_handler import *
+from torch import nn
 
 
 class Decoder(nn.Module):
@@ -27,6 +28,7 @@ class Decoder(nn.Module):
         name = params['name']
         self_attn = params['self_attn']
         key_value_split = params['key_value_split']
+        self_attn_kv_split = params['self_attn_kv_split']
         if params is None:
             self.attention_layer = None
             self.self_attention_layer = None
@@ -41,7 +43,7 @@ class Decoder(nn.Module):
             self.attention_layer = None
 
         if self_attn:
-            self.self_attention_layer = SelfAttention(hidden_units, key_value_split)
+            self.self_attention_layer = SelfAttention(hidden_units, self_attn_kv_split)
         else:
             self.self_attention_layer = None
         return
@@ -50,6 +52,7 @@ class Decoder(nn.Module):
         self.optimizer.zero_grad()
 
     def update_weights(self):
+        nn.utils.clip_grad_norm_(self.parameters(), 5)
         self.optimizer.step()
 
     def get_output_with_attention(self, value, attn, decoder_self_attn, encoder_self_attn):

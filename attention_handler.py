@@ -21,7 +21,7 @@ class Attention(nn.Module):
 
     def forward(self, current_state, previous_hidden_states, mask):
         if previous_hidden_states is None:
-            return None, None, None
+            return None, None
         keys, values = self.split_key_value(previous_hidden_states)
         query = current_state
         attention_weights = self.attention(query, values)

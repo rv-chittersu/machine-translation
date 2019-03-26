@@ -52,7 +52,10 @@ if __name__ == '__main__':
         f.write(log)
         f.write("\n")
         f.flush()
-
+        
+        if (loss/batches) > 100:
+            print("PANIC!!!!")
+            exit()
         # eval model
         loss, batches = trainer.run(config.processed_dev_data, config.dev_batch_size, config.max_dev_batches, 'dev')
         log = str(dt.now()) + ": >>>Epoch-" + str(epoch) + " - Avg. Dev Loss:" + str(loss/batches)

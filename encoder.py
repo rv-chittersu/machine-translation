@@ -26,7 +26,7 @@ class Encoder(nn.Module):
         self.cell_state_reducer = nn.Linear(2*hidden_units, hidden_units, bias=False)
         self.self_attention = None
         if attention_params["self_attn"]:
-            self.self_attention = SelfAttention(hidden_units, attention_params["key_value_split"])
+            self.self_attention = SelfAttention(hidden_units, attention_params["self_attn_kv_split"])
 
     def define_parameters(self, hidden_units, lstm_layers):
         hidden_state = torch.randn((lstm_layers * 2, 1, hidden_units), dtype=torch.float)  # (layers, 1, h_units)
@@ -39,6 +39,7 @@ class Encoder(nn.Module):
         self.optimizer.zero_grad()
 
     def update_weights(self):
+        nn.utils.clip_grad_norm_(self.parameters(), 5)
         self.optimizer.step()
 
     def forward(self, input_tensor, sequence_lengths, input_mask):
@@ -79,6 +80,6 @@ class Encoder(nn.Module):
 
         encoder_attn = None
         if self.self_attention is not None:
-            _, encoder_attn, _ = self.self_attention(None, output, input_mask)
+            encoder_attn, _ = self.self_attention(None, output, input_mask)
 
         return output, decoder_hidden_state, decoder_cell_state, encoder_attn

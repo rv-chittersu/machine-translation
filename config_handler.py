@@ -50,6 +50,13 @@ class Config:
             kv_split = [int(i) for i in kv_split]
         params["key_value_split"] = kv_split
 
+        self_attn_kv_split = config.get('ATTENTION', 'SelfAttentionKVSplit').split(",")
+        if len(self_attn_kv_split) != 2:
+            self_attn_kv_split = None
+        else:
+            self_attn_kv_split = [int(i) for i in self_attn_kv_split]
+        params["self_attn_kv_split"] = self_attn_kv_split
+
         self.attention_params = params
 
         self.epochs = config.getint('TRAINING', 'Epochs')
