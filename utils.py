@@ -123,6 +123,18 @@ contractions = {
 }
 
 
+def process_encoded_tensor(t):
+    result = []
+    s = torch.transpose(t, 0, 1).tolist()
+
+    for sen in s:
+        l = len(sen)
+        if 3 in sen:
+            l = sen.index(3) + 1
+        result.append(" ".join([str(k) for k in sen[0: l]]))
+    return result
+
+
 def process_encoded_sentences(t1, t2, sep=False):
     result1 = []
     result2 = []
@@ -172,17 +184,24 @@ def get_vocab_size(file):
             size += 1
     return size
 
-# def load_test_set(file, len):
-#     f = open(file)
-#     for line in f.read().split("\n"):
-#         if len(line) == 0:
-#             continue
-#         parts = line.split("\t")
-#         if len(parts) != 2:
-#             continue
-#     return lang1, lang2
 
 def compute_bleu_score(file):
     hypothesis = [x.split(" ") for x in open(file + ".hyp").read().split("\n") if len(x) != 0]
     references = [[x.split(" ")] for x in open(file + ".ref").read().split("\n") if len(x) != 0]
     return corpus_bleu(references, hypothesis)
+
+
+def get_reverse_vocab(file):
+    with open(file, 'r') as f:
+        lines = f.read().split("\n")
+        result = [x.split(",")[0] for x in lines if len(x) != 0]
+        print(result)
+    return result
+
+
+def decode(encoded_sentence, revers_vocab):
+    result = []
+    for word in encoded_sentence.split(" "):
+        act_word = revers_vocab[int(word)]
+        result.append(act_word)
+    return " ".join(result)

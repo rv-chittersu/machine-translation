@@ -11,13 +11,15 @@ def post(batch, vocab):
 
 class Trainer:
 
-    def __init__(self, encoder, decoder, file_name):
+    def __init__(self, encoder, decoder, file_name, src_vocab, dst_vocab):
 
         self.lang1 = Field(use_vocab=False, postprocessing=post, pad_token='1')
         self.lang2 = Field(use_vocab=False, postprocessing=post, pad_token='1')
         self.encoder: Encoder = encoder
         self.decoder: Decoder = decoder
         self.file_name = file_name
+        self.src_vocab = src_vocab
+        self.dst_vocab = dst_vocab
 
     def clean_grads(self):
         for p in self.encoder.parameters():
@@ -50,11 +52,15 @@ class Trainer:
         loss = float(loss)
 
         if mode == 'test':
-            hyp, ref = process_encoded_sentences(result, output_tensor, sep=True)
-            self.hyp_file.write("\n".join(hyp) + "\n")
+            hyp = process_encoded_tensor(result, )
+            ref = process_encoded_tensor(output_tensor)
+            src = process_encoded_tensor(input_tensor)
+            self.hyp_file.write("\n".join([decode(x, self.dst_vocab) for x in hyp]) + "\n")
             self.hyp_file.flush()
-            self.ref_file.write("\n".join(ref) + "\n")
+            self.ref_file.write("\n".join([decode(x, self.dst_vocab) for x in ref]) + "\n")
             self.ref_file.flush()
+            self.src_file.write("\n".join([decode(x, self.src_vocab) for x in src]) + "\n")
+            self.src_file.flush()
 
         torch.cuda.empty_cache()
         return loss
@@ -79,6 +85,7 @@ class Trainer:
         if mode == 'test':
             self.hyp_file = open(self.file_name + ".hyp", "w")
             self.ref_file = open(self.file_name + ".ref", "w")
+            self.src_file = open(self.file_name + ".src", "w")
 
         for batch in batch_iterator.__iter__():
             loss = self.feed_mini_batch(batch.lang1.cuda(), batch.lang2.cuda(), mode)

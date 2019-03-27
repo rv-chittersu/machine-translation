@@ -39,7 +39,10 @@ if __name__ == '__main__':
 
     print("Key - " + key)
 
-    trainer = Trainer(encoder.cuda(), decoder.cuda(), config.result_folder + "/" + key)
+    src_vcb = get_reverse_vocab(config.source_vocab)
+    dst_vcb = get_reverse_vocab(config.destination_vocab)
+
+    trainer = Trainer(encoder.cuda(), decoder.cuda(), config.result_folder + "/" + key, src_vcb, dst_vcb)
 
     f.write(pp.pformat(config.__dict__))
     f.write("\n\n")
