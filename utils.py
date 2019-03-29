@@ -195,7 +195,6 @@ def get_reverse_vocab(file):
     with open(file, 'r') as f:
         lines = f.read().split("\n")
         result = [x.split(",")[0] for x in lines if len(x) != 0]
-        print(result)
     return result
 
 

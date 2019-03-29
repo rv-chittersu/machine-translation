@@ -19,11 +19,12 @@ if __name__ == '__main__':
     destination_size = get_vocab_size(config.destination_vocab)
     print("dest vocab size - " + str(destination_size))
 
-    pp = pprint.PrettyPrinter(depth=6)
-    pp.pprint(config.__dict__)
-
     key = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))  # generate random string
     init_epoch = 0
+
+    # if len(sys.argv) == 3:
+    #     config.attention_params['self_attn'] = ("True" == sys.argv[2])
+    #     config.attention_params['name'] = sys.argv[1]
     if len(sys.argv) == 3:
         key = sys.argv[1]
         init_epoch = int(sys.argv[2])
@@ -44,6 +45,8 @@ if __name__ == '__main__':
 
     trainer = Trainer(encoder.cuda(), decoder.cuda(), config.result_folder + "/" + key, src_vcb, dst_vcb)
 
+    pp = pprint.PrettyPrinter(depth=6)
+    pp.pprint(config.__dict__)
     f.write(pp.pformat(config.__dict__))
     f.write("\n\n")
 
@@ -52,19 +55,13 @@ if __name__ == '__main__':
         loss, batches = trainer.run(config.processed_training_data, config.training_batch_size, config.max_training_batches, 'train')
         log = str(dt.now()) + ": >>>Epoch-" + str(epoch) + " - Avg. Training Loss:" + str(loss/batches)
         print(log)
-        f.write(log)
-        f.write("\n")
+        f.write(log + "\n")
         f.flush()
         
-        if (loss/batches) > 100:
-            print("PANIC!!!!")
-            exit()
-        # eval model
         loss, batches = trainer.run(config.processed_dev_data, config.dev_batch_size, config.max_dev_batches, 'dev')
         log = str(dt.now()) + ": >>>Epoch-" + str(epoch) + " - Avg. Dev Loss:" + str(loss/batches)
         print(log)
-        f.write(log)
-        f.write("\n")
+        f.write(log + "\n")
         f.flush()
 
         torch.save(encoder, config.checkpoint_folder + "/" + key + '.' + str(epoch) + '.encoder')

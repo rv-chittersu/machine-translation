@@ -11,63 +11,63 @@ class Decoder(nn.Module):
         self.define_layers(vocabulary_size, config.decoder_embedding_size, config.hidden_units,
                            config.layers, config.attention_params)
         self.optimizer = optim.Adam(self.parameters(), lr=config.learning_rate, eps=1e-3, amsgrad=True)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=3, gamma=0.1, last_epoch=-1)
         self.attention_params = config.attention_params
 
     def define_layers(self, vocabulary_size, embedding_size, hidden_units, layers, attention_params=None):
         self.embedding_layer = nn.Embedding(vocabulary_size, embedding_size, padding_idx=0)
         self.lstm = nn.LSTM(input_size=embedding_size, hidden_size=hidden_units, num_layers=layers)
-        self.define_attention_layer(attention_params, hidden_units)
+
+        self.define_self_attention_layer(hidden_units, attention_params)
+        self.encoder_attention = self.get_attention_layer(hidden_units, attention_params, 'encoder_attn')  # add a limit on output_size
+        self.decoder_attention = self.get_attention_layer(hidden_units, attention_params, 'decoder_attn')  # add a limit on output_size
+
         output_layer_size = hidden_units
-        if self.attention_layer is not None:
-            output_layer_size += self.attention_layer.output_size
-        if self.self_attention_layer is not None:
-            output_layer_size += 2*self.self_attention_layer.output_size
+        if self.encoder_attention is not None:
+            output_layer_size += self.encoder_attention.output_size
+        if self.decoder_attention is not None:
+            output_layer_size += self.decoder_attention.output_size
         self.output_layer = nn.Linear(output_layer_size, vocabulary_size)
 
-    def define_attention_layer(self, params, hidden_units):
-        name = params['name']
-        self_attn = params['self_attn']
-        key_value_split = params['key_value_split']
-        self_attn_kv_split = params['self_attn_kv_split']
-        if params is None:
-            self.attention_layer = None
-            self.self_attention_layer = None
+    def define_self_attention_layer(self, hidden_units, attention_params):
+        flag = attention_params['self_attn']
+        heads = attention_params['heads']
+        if not flag:
+            self.self_attention = None
             return
-        if name == 'additive':
-            self.attention_layer = AdditiveAttention(hidden_units, key_value_split)
-        elif name == 'multiplicative':
-            self.attention_layer = MultiplicativeAttention(hidden_units, key_value_split)
-        elif name == 'scaled_dot_product':
-            self.attention_layer = ScaledDotProductAttention(hidden_units, key_value_split)
-        else:
-            self.attention_layer = None
+        self.self_attention = nn.ModuleList()
+        for i in range(heads):
+            self.self_attention.append(SelfAttention(hidden_units, heads))
 
-        if self_attn:
-            self.self_attention_layer = SelfAttention(hidden_units, self_attn_kv_split)
+    def get_attention_layer(self, hidden_units, attention_params, key):
+        name = attention_params[key]
+        key_value_split = attention_params['key_value_split']
+        if name is None:
+            return None
+        if name == 'additive':
+            return AdditiveAttention(hidden_units, key_value_split)
+        elif name == 'multiplicative':
+            return MultiplicativeAttention(hidden_units, key_value_split)
+        elif name == 'scaled_dot_product':
+            return ScaledDotProductAttention(hidden_units, key_value_split)
         else:
-            self.self_attention_layer = None
-        return
+            print("unknown attention type - " + name + " .Not using attention")
+            return None
 
     def reset_grad(self):
         self.optimizer.zero_grad()
 
     def update_weights(self):
         nn.utils.clip_grad_norm_(self.parameters(), 5)
-        self.optimizer.step()
+        self.scheduler.step()
 
-    def get_output_with_attention(self, value, attn, decoder_self_attn, encoder_self_attn):
-        batch_size, _ = value.shape
-        if encoder_self_attn is not None and decoder_self_attn is None:
-            # probably first stage in self decoder attn
-            # expected attn layer output size
-            decoder_self_attn = torch.zeros((batch_size, self.self_attention_layer.output_size), device=torch.device('cuda'))
-        outputs = [value]
-        if attn is not None:
-            outputs.append(attn)
-        if decoder_self_attn is not None:
-            outputs.append(decoder_self_attn)
-            outputs.append(encoder_self_attn)
-        return torch.cat(outputs, dim=1)
+    def get_output_with_attention(self, hidden_state, encoder_context, decoder_context):
+        outputs = [hidden_state]
+        if encoder_context is not None:
+            outputs.append(encoder_context)
+        if decoder_context is not None:
+            outputs.append(decoder_context)
+        return torch.cat(tuple(outputs), dim=1)
 
     def forward(self, output_tensor, encoder_hidden_states, input_mask, hidden_state, cell_state, encoder_attention, max_length):
         # define loss
@@ -80,16 +80,9 @@ class Decoder(nn.Module):
         # decoder hidden_states tensor
         decoder_hidden_states = None
 
-        # variable for output mask
-        current_output_mask = None
-
         # result generated by decoder
         result = torch.empty((1, batch_size), dtype=torch.long, device=torch.device('cuda'))  # (1, batch_size)
         result.fill_(2)
-
-        if self.attention_params['name'] == 'self_attention':
-            encoder_hidden_states = None
-            input_mask = None
 
         for position in range(seq_len - 1):
 
@@ -103,13 +96,28 @@ class Decoder(nn.Module):
             lstm_output = lstm_output.view(batch_size, -1)  # (batch_size, hidden_units)
 
             # pass final_hidden_state through attention layer exist
-            context = None
-            self_context = None
-            if self.attention_layer is not None:
-                context, _ = self.attention_layer(lstm_output, encoder_hidden_states, input_mask)
-            if self.self_attention_layer is not None:
-                self_context, _ = self.self_attention_layer(None, decoder_hidden_states, current_output_mask)
-            output_with_attention = self.get_output_with_attention(lstm_output, context, self_context, encoder_attention)
+
+            encoder_context = None
+            decoder_context = None
+
+            if self.encoder_attention is not None:
+                encoder_context, e_attn_dist = self.encoder_attention(lstm_output, encoder_hidden_states, input_mask)
+                if batch_size == 1:
+                    print("enc" + str(e_attn_dist))
+            if self.decoder_attention is not None:
+                if decoder_hidden_states is None:
+                    decoder_context = lstm_output
+                elif self.self_attention is not None:
+                    self_attn_context = torch.cat(tuple([attention_head(decoder_hidden_states, None) for attention_head in self.self_attention]), dim=2)
+                    decoder_context, d_attn_dist = self.decoder_attention(lstm_output, self_attn_context, None)
+                    if batch_size == 1:
+                        print(d_attn_dist)
+                else:
+                    decoder_context, d_attn_dist = self.decoder_attention(lstm_output, decoder_hidden_states, None)
+                    if batch_size == 1:
+                        print(d_attn_dist)
+
+            output_with_attention = self.get_output_with_attention(lstm_output, encoder_context, decoder_context)
 
             # get dist on vocabulary
             dist = self.output_layer(output_with_attention)
@@ -132,7 +140,5 @@ class Decoder(nn.Module):
                 decoder_hidden_states = lstm_output.view(1, batch_size, -1)
             else:
                 decoder_hidden_states = torch.cat((decoder_hidden_states, lstm_output.view(1, batch_size, -1)), dim=0)
-
-            current_output_mask = torch.ones((position + 1, batch_size), dtype=torch.float, device=torch.device('cuda'))
 
         return loss/seq_len, result
