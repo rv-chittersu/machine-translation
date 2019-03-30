@@ -34,7 +34,7 @@ report.pdf
 
 The encodings in the above file is generated based on **en.vocab, de.vocab** which is built using **train.tsv**
 
-*Note:* New training splits and vocabulary can be generated from *preprocessing.py* but data sets need to be procured by the user
+*Note:* New training splits and vocabulary can be generated from *preprocessing.py* but data sets need to be procured by the user<br>
 *Note:2* **train.tsv** isn't uploaded because of size issue. One can later add it as mentioned in below sections
 ### Code
 
