@@ -1,6 +1,7 @@
 # Neural Machine Translation with Attention Mechanism
 This work is done as part of [assignment](https://sites.google.com/site/2019e1246/schedule/assignment-2) 
-for [E1 246: Natural Language Understanding (2019)](https://sites.google.com/site/2019e1246/basics). The report for the same can be found [here](https://github.com/rv-chittersu/word2vec/blob/master/report.pdf)
+for [E1 246: Natural Language Understanding (2019)](https://sites.google.com/site/2019e1246/basics). The report for the same can be found 
+[here](https://github.com/rv-chittersu/machine-translation/blob/master/report.pdf)
 
 
 ## File Structure
