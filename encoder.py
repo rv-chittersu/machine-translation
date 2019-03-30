@@ -13,6 +13,7 @@ class Encoder(nn.Module):
                             config.layers, config.attention_params)
         self.define_parameters(config.hidden_units, config.layers)
         self.optimizer = optim.Adam(self.parameters(), lr=config.learning_rate, eps=1e-3, amsgrad=True)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=3, gamma=0.1, last_epoch=-1)
         self.attention_params = config.attention_params
 
     def define_modules(self, vocabulary_size, embedding_size, hidden_units,  lstm_layers, attention_params):
@@ -42,7 +43,7 @@ class Encoder(nn.Module):
 
     def update_weights(self):
         nn.utils.clip_grad_norm_(self.parameters(), 5)
-        self.optimizer.step()
+        self.scheduler.step()
 
     def forward(self, input_tensor, sequence_lengths, input_mask):
         # input_tensor : (sequence_length, batch_size)

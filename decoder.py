@@ -11,6 +11,7 @@ class Decoder(nn.Module):
         self.define_layers(vocabulary_size, config.decoder_embedding_size, config.hidden_units,
                            config.layers, config.attention_params)
         self.optimizer = optim.Adam(self.parameters(), lr=config.learning_rate, eps=1e-3, amsgrad=True)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=3, gamma=0.1, last_epoch=-1)
         self.attention_params = config.attention_params
 
     def define_layers(self, vocabulary_size, embedding_size, hidden_units, layers, attention_params=None):
@@ -105,6 +106,7 @@ class Decoder(nn.Module):
 
             if self.encoder_attention is not None:
                 encoder_context, e_attn_dist = self.encoder_attention(lstm_output, encoder_hidden_states, input_mask)
+
             if self.decoder_attention is not None:
                 if decoder_hidden_states is None:
                     decoder_context = lstm_output

@@ -166,8 +166,8 @@ class SelfAttention(nn.Module):
         scaled_masked_dot_product = torch.div(dot_product, math.sqrt(input_dim))
 
         dist = f.softmax(scaled_masked_dot_product, 1)\
-            .view(-1, 1)
-        dist = dist.repeat(1, value_dim)
+            .view(-1, 1)\
+            .repeat(1, value_dim)
 
         weighted_avg1 = torch.mul(value, dist)\
             .view(-1, seq_len, value_dim)
