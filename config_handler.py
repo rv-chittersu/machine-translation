@@ -12,6 +12,10 @@ class Config:
 
         self.source_data = config.get('DATA', 'SourceData')
         self.destination_data = config.get('DATA', 'DestinationData')
+        self.source_dev_data = config.get('DATA', 'SourceDevData')
+        self.destination_dev_data = config.get('DATA', 'DestinationDevData')
+        self.source_test_data = config.get('DATA', 'SourceTestData')
+        self.destination_test_data = config.get('DATA', 'DestinationTestData')
         self.max_sent_length = config.getint('DATA', 'MaxSentenceLength')
 
         self.processed_training_data = config.get('DATA', 'ProcessedTrainingData')
@@ -39,23 +43,18 @@ class Config:
         self.hidden_units = config.getint('MODEL', 'LSTMHiddenUnits')
 
         params = {
-            "name": config.get('ATTENTION', 'Name'),
-            "self_attn": config.getboolean('ATTENTION', 'SelfAttention')
+            "encoder_attn": config.get('ATTENTION', 'EncoderAttention'),
+            "decoder_attn": config.get('ATTENTION', 'DecoderAttention'),
+            "self_attn": config.getboolean('ATTENTION', 'SelfAttention'),
+            "heads": config.getint('ATTENTION', 'AttentionHeads')
         }
 
-        kv_split = config.get('ATTENTION', 'KVSplit').split(",")
+        kv_split = config.get('ATTENTION', 'KeyValueSplit').split(",")
         if len(kv_split) != 2:
             kv_split = None
         else:
             kv_split = [int(i) for i in kv_split]
         params["key_value_split"] = kv_split
-
-        self_attn_kv_split = config.get('ATTENTION', 'SelfAttentionKVSplit').split(",")
-        if len(self_attn_kv_split) != 2:
-            self_attn_kv_split = None
-        else:
-            self_attn_kv_split = [int(i) for i in self_attn_kv_split]
-        params["self_attn_kv_split"] = self_attn_kv_split
 
         self.attention_params = params
 

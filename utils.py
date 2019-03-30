@@ -1,7 +1,6 @@
 import torch
 from nltk.translate.bleu_score import *
 
-
 contractions = {
     "ain't": "am not / are not / is not / has not / have not",
     "aren't": "are not / am not",
@@ -188,14 +187,13 @@ def get_vocab_size(file):
 def compute_bleu_score(file):
     hypothesis = [x.split(" ") for x in open(file + ".hyp").read().split("\n") if len(x) != 0]
     references = [[x.split(" ")] for x in open(file + ".ref").read().split("\n") if len(x) != 0]
-    return corpus_bleu(references, hypothesis)
+    return corpus_bleu(references, hypothesis)*100
 
 
 def get_reverse_vocab(file):
     with open(file, 'r') as f:
         lines = f.read().split("\n")
         result = [x.split(",")[0] for x in lines if len(x) != 0]
-        print(result)
     return result
 
 

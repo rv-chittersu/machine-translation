@@ -1,0 +1,80 @@
+{'attention_params': {'decoder_attn': 'additive',
+                      'encoder_attn': 'additive',
+                      'heads': 2,
+                      'key_value_split': None,
+                      'self_attn': False},
+ 'checkpoint_folder': './models',
+ 'decoder_embedding_size': 128,
+ 'destination_data': './data/data.de',
+ 'destination_dev_data': './data/dev-data.de',
+ 'destination_lang': 'de',
+ 'destination_test_data': './data/test-data.de',
+ 'destination_vocab': './data/de.vocab',
+ 'dev_batch_size': 200,
+ 'dev_data': './data/dev.tsv',
+ 'encoder_embedding_size': 128,
+ 'epochs': 10,
+ 'hidden_units': 64,
+ 'layers': 2,
+ 'learning_rate': 0.01,
+ 'max_dev_batches': 100,
+ 'max_sent_length': 20,
+ 'max_test_batches': 150,
+ 'max_training_batches': 600,
+ 'min_freq': 10,
+ 'processed_dev_data': './data/proc.dev.tsv',
+ 'processed_test_data': './data/proc.test.tsv',
+ 'processed_test_data2': './data/proc.test2.tsv',
+ 'processed_training_data': './data/proc.train.tsv',
+ 'result_folder': './results',
+ 'source_data': './data/data.en',
+ 'source_dev_data': './data/dev-data.en',
+ 'source_lang': 'en',
+ 'source_test_data': './data/test-data.en',
+ 'source_vocab': './data/en.vocab',
+ 'test_batch_size': 200,
+ 'test_data': './data/test.tsv',
+ 'test_data2': './data/test2.tsv',
+ 'training_batch_size': 300,
+ 'training_data': './data/train.tsv'}
+
+2019-03-29 21:52:25.326329: >>>Epoch-0 - Avg. Training Loss:4.7685851772361145
+2019-03-29 21:52:37.875696: >>>Epoch-0 - Avg. Dev Loss:4.2991880824272855
+2019-03-29 21:52:38.752069: >>> BLEU Score on test1:(6.616502258014884, 6.616502258014884)
+2019-03-29 21:52:51.361185: >>> BLEU Score on test2:(9.467807593346324, 9.467807593346324)
+2019-03-29 21:59:33.561751: >>>Epoch-1 - Avg. Training Loss:3.2623730616012057
+2019-03-29 21:59:46.615655: >>>Epoch-1 - Avg. Dev Loss:3.834551088183596
+2019-03-29 21:59:47.507778: >>> BLEU Score on test1:(8.156954353303258, 8.156954353303258)
+2019-03-29 22:00:00.824726: >>> BLEU Score on test2:(13.594318019250554, 13.594318019250554)
+2019-03-29 22:06:38.399888: >>>Epoch-2 - Avg. Training Loss:2.733141081625545
+2019-03-29 22:06:51.089967: >>>Epoch-2 - Avg. Dev Loss:3.628971836540783
+2019-03-29 22:06:51.980523: >>> BLEU Score on test1:(9.503774317782668, 9.503774317782668)
+2019-03-29 22:07:04.707815: >>> BLEU Score on test2:(15.516200953672286, 15.516200953672286)
+2019-03-29 22:13:42.149023: >>>Epoch-3 - Avg. Training Loss:2.4513164057186985
+2019-03-29 22:13:54.953614: >>>Epoch-3 - Avg. Dev Loss:3.5300430512418015
+2019-03-29 22:13:55.842092: >>> BLEU Score on test1:(9.836597678676677, 9.836597678676677)
+2019-03-29 22:14:08.620837: >>> BLEU Score on test2:(16.28797232228294, 16.28797232228294)
+2019-03-29 22:20:46.199650: >>>Epoch-4 - Avg. Training Loss:2.2754835622559098
+2019-03-29 22:20:58.999960: >>>Epoch-4 - Avg. Dev Loss:3.4845836123791694
+2019-03-29 22:20:59.898026: >>> BLEU Score on test1:(10.17352929714856, 10.17352929714856)
+2019-03-29 22:21:12.802574: >>> BLEU Score on test2:(16.910962747462243, 16.910962747462243)
+2019-03-29 22:27:49.092300: >>>Epoch-5 - Avg. Training Loss:2.1484777792681884
+2019-03-29 22:28:01.761291: >>>Epoch-5 - Avg. Dev Loss:3.4605748815264654
+2019-03-29 22:28:02.639734: >>> BLEU Score on test1:(10.199377219637856, 10.199377219637856)
+2019-03-29 22:28:15.225397: >>> BLEU Score on test2:(17.107388261665673, 17.107388261665673)
+2019-03-29 22:34:52.247617: >>>Epoch-6 - Avg. Training Loss:2.0545941174338207
+2019-03-29 22:35:04.945045: >>>Epoch-6 - Avg. Dev Loss:3.4503448606554428
+2019-03-29 22:35:05.836768: >>> BLEU Score on test1:(10.547261038383475, 10.547261038383475)
+2019-03-29 22:35:18.737543: >>> BLEU Score on test2:(17.355491190881605, 17.355491190881605)
+2019-03-29 22:41:56.931097: >>>Epoch-7 - Avg. Training Loss:1.9843656679030972
+2019-03-29 22:42:09.729575: >>>Epoch-7 - Avg. Dev Loss:3.4612725758119867
+2019-03-29 22:42:10.617837: >>> BLEU Score on test1:(10.375799611520375, 10.375799611520375)
+2019-03-29 22:42:23.507460: >>> BLEU Score on test2:(17.339573529127275, 17.339573529127275)
+2019-03-29 22:49:03.257003: >>>Epoch-8 - Avg. Training Loss:1.9233109113199878
+2019-03-29 22:49:16.073535: >>>Epoch-8 - Avg. Dev Loss:3.478920542206783
+2019-03-29 22:49:16.968336: >>> BLEU Score on test1:(10.194783179123627, 10.194783179123627)
+2019-03-29 22:49:29.804263: >>> BLEU Score on test2:(17.508419169521034, 17.508419169521034)
+2019-03-29 22:56:09.240568: >>>Epoch-9 - Avg. Training Loss:1.8712236035003764
+2019-03-29 22:56:22.223766: >>>Epoch-9 - Avg. Dev Loss:3.488394473794721
+2019-03-29 22:56:23.130144: >>> BLEU Score on test1:(9.876803046398567, 9.876803046398567)
+2019-03-29 22:56:36.215804: >>> BLEU Score on test2:(17.71161730935377, 17.71161730935377)

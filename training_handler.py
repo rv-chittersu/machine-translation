@@ -21,16 +21,7 @@ class Trainer:
         self.src_vocab = src_vocab
         self.dst_vocab = dst_vocab
 
-    def clean_grads(self):
-        for p in self.encoder.parameters():
-            if p.grad is not None:
-                del p.grad  # free some memory
-        for p in self.decoder.parameters():
-            if p.grad is not None:
-                del p.grad  # free some memory
-
     def feed_mini_batch(self, input_tensor,  output_tensor, mode):
-        # operation such that all non zero is one and all one is zero
         input_mask = torch.FloatTensor(input_tensor.shape).copy_(input_tensor).apply_(lambda val: 0 if val == 1 else 1).cuda()
         input_lengths = torch.sum(input_mask, 0)
 

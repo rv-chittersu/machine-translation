@@ -7,10 +7,8 @@ from attention_handler import *
 
 class Encoder(nn.Module):
 
-    def __init__(self, vocabulary_size, config, ):
+    def __init__(self, vocabulary_size, config):
         super().__init__()
-        self.apple = "apple"
-        # embedding_size, hidden_units, lstm_layers, learning_rate
         self.define_modules(vocabulary_size, config.encoder_embedding_size, config.hidden_units,
                             config.layers, config.attention_params)
         self.define_parameters(config.hidden_units, config.layers)
@@ -26,7 +24,11 @@ class Encoder(nn.Module):
         self.cell_state_reducer = nn.Linear(2*hidden_units, hidden_units, bias=False)
         self.self_attention = None
         if attention_params["self_attn"]:
-            self.self_attention = SelfAttention(hidden_units, attention_params["self_attn_kv_split"])
+            attention_heads = attention_params["heads"]
+            print("Adding decoder self attention with " + str(attention_heads) + " heads")
+            self.self_attention = nn.ModuleList()
+            for i in range(attention_heads):
+                self.self_attention.append(SelfAttention(2*hidden_units, attention_heads))
 
     def define_parameters(self, hidden_units, lstm_layers):
         hidden_state = torch.randn((lstm_layers * 2, 1, hidden_units), dtype=torch.float)  # (layers, 1, h_units)
@@ -74,12 +76,13 @@ class Encoder(nn.Module):
         hidden_state = torch.cat(torch.split(hidden_state, (1, 1), 1), 3).squeeze(1)
         cell_state = torch.cat(torch.split(cell_state, (1, 1), 1), 3).squeeze(1)
 
-        output = self.output_reducer(hidden_states)
-        decoder_hidden_state = self.hidden_state_reducer(hidden_state)
         decoder_cell_state = self.cell_state_reducer(cell_state)
+        decoder_hidden_state = self.hidden_state_reducer(hidden_state)
 
         encoder_attn = None
         if self.self_attention is not None:
-            encoder_attn, _ = self.self_attention(None, output, input_mask)
+            hidden_states = torch.cat(tuple([attention_head(hidden_states, input_mask) for attention_head in self.self_attention]), dim=2)
+
+        output = self.hidden_state_reducer(hidden_states)
 
         return output, decoder_hidden_state, decoder_cell_state, encoder_attn

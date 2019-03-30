@@ -1,10 +1,10 @@
 import datetime
 import pandas as pd
 from torchtext.data import Field, TabularDataset, Iterator
-from sklearn.model_selection import train_test_split
 import nltk
 from config_handler import Config
 from utils import *
+from sklearn.model_selection import train_test_split
 
 
 def remove_punctuation(string):
@@ -128,12 +128,9 @@ def read(file, lang1, lang2):
     return res
 
 
-if __name__ == '__main__':
-
-    config = Config('./config.ini')
-
-    english_file = open(config.source_data, encoding='utf-8').read().split('\n')
-    german_file = open(config.destination_data, encoding='utf-8').read().split('\n')
+def process(file1, file2, maxlen):
+    english_file = open(file1, encoding='utf-8').read().split('\n')
+    german_file = open(file2, encoding='utf-8').read().split('\n')
 
     raw_data = {'lang1': [line.replace('\t', ' ') for line in english_file],
                 'lang2': [line.replace('\t', ' ') for line in german_file]}
@@ -147,16 +144,24 @@ if __name__ == '__main__':
 
     s = set()
 
-    l = map(lambda index: s.add([index-1, index, index+1]), l)
+    l = map(lambda index: s.add([index - 1, index, index + 1]), l)
 
     df = df.drop(df.index[list(s)])
 
-    df = df.query('lang1_len < ' + str(config.max_sent_length) + ' & lang2_len < ' + str(config.max_sent_length) +  ' & lang1_len > 5 & lang2_len > 5')
-    df = df.query('lang2_len < lang1_len * 1.5 & lang2_len * 1.5 > lang1_len')
+    df = df.query('lang1_len < ' + str(maxlen) + ' & lang2_len < ' + str(
+        maxlen) + ' & lang1_len > 5 & lang2_len > 5')
+    return df.query('lang2_len < lang1_len * 1.5 & lang2_len * 1.5 > lang1_len')
 
-    train, test = train_test_split(df, test_size=0.2)
-    train, dev = train_test_split(train, test_size=0.2)
 
+if __name__ == '__main__':
+
+    config = Config('./config.ini')
+
+    train = process(config.source_data, config.destination_data, config.max_sent_length)
+    dev = process(config.source_dev_data, config.destination_dev_data, config.max_sent_length)
+    test = process(config.source_test_data, config.destination_test_data, config.max_sent_length)
+
+    train, test2 = train_test_split(train, test_size=0.1)
     print(str(datetime.datetime.now()) + ": creating processed files")
     # write train test dev to file
     train.to_csv(config.training_data, index=False, sep='\t')
