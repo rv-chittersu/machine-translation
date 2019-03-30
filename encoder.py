@@ -26,7 +26,7 @@ class Encoder(nn.Module):
         self.self_attention = None
         if attention_params["self_attn"]:
             attention_heads = attention_params["heads"]
-            print("Adding decoder self attention with " + str(attention_heads) + " heads")
+            print("Encoder: Adding decoder self attention with " + str(attention_heads) + " heads")
             self.self_attention = nn.ModuleList()
             for i in range(attention_heads):
                 self.self_attention.append(SelfAttention(2*hidden_units, attention_heads))

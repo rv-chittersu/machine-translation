@@ -35,7 +35,7 @@ class Decoder(nn.Module):
         if not flag:
             self.self_attention = None
             return
-        print("Adding decoder self attention with " + str(heads) + " heads")
+        print("Decoder: Adding decoder self attention with " + str(heads) + " heads")
         self.self_attention = nn.ModuleList()
         for i in range(heads):
             self.self_attention.append(SelfAttention(hidden_units, heads))
@@ -46,16 +46,16 @@ class Decoder(nn.Module):
         if name is None:
             return None
         if name == 'additive':
-            print("Adding additive attention for " + key)
+            print("Decoder: Adding additive attention for " + key)
             return AdditiveAttention(hidden_units, key_value_split)
         elif name == 'multiplicative':
-            print("Adding multiplicative attention for " + key)
+            print("Decoder: Adding multiplicative attention for " + key)
             return MultiplicativeAttention(hidden_units, key_value_split)
         elif name == 'scaled_dot_product':
-            print("Adding scaled_dot_product attention for " + key)
+            print("Decoder: Adding scaled_dot_product attention for " + key)
             return ScaledDotProductAttention(hidden_units, key_value_split)
         else:
-            print("unknown attention type - " + name + " .Not using attention")
+            print("Decoder: unknown attention type - " + name + " .Not using attention")
             return None
 
     def reset_grad(self):
@@ -113,8 +113,6 @@ class Decoder(nn.Module):
                 elif self.self_attention is not None:
                     self_attn_context = torch.cat(tuple([attention_head(decoder_hidden_states, None) for attention_head in self.self_attention]), dim=2)
                     decoder_context, d_attn_dist = self.decoder_attention(lstm_output, self_attn_context, None)
-                    if batch_size == 1:
-                        print(d_attn_dist)
                 else:
                     decoder_context, d_attn_dist = self.decoder_attention(lstm_output, decoder_hidden_states, None)
 
